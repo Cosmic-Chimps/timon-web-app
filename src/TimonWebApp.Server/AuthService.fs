@@ -10,7 +10,8 @@ open TimonWebApp
 open FsHttp
 open FsHttp.DslCE
 open FSharp.Json
-open TimonWebApp.Client.Pages.Login
+open TimonWebApp.Client.Common
+open TimonWebApp.Client.Services
 
 type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment) =
     inherit RemoteHandler<Client.Services.AuthService>()
@@ -28,9 +29,15 @@ type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment) =
                                 json (Json.serialize loginRequest)
                             }
                             |> toText
-                            |> Client.Services.LoginResponse.Parse
+                            |> Client.Services.LoginResponseProvider.Parse
                 do! ctx.HttpContext.AsyncSignIn(loginRequest.Email, TimeSpan.FromDays(365.))
-                return Some res
+                
+                let loginResponse = {
+                    Token = res.AccessToken
+                    TimeStamp = DateTime.UtcNow.AddSeconds(float(res.ExpiresIn))
+                    User = loginRequest.Email
+                }
+                return Some(loginResponse)
 //                if password = "password" then
 //                    do! ctx.HttpContext.AsyncSignIn(username, TimeSpan.FromDays(365.))
 //                    return Some username

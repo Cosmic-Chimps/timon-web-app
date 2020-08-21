@@ -6,22 +6,51 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Bolero Application</title>
+    <title>Suri</title>
     <base href="/">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css">
+    <link rel="stylesheet" href="//cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css">
     <link rel="stylesheet" href="css/index.css">
   </head>
   <body>
-    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
-      <div class="navbar-brand">
-        <a class="navbar-item has-text-weight-bold is-size-5" href="https://fsbolero.io">
-          <img style="height:40px" src="https://github.com/fsbolero/website/raw/master/src/Website/img/wasm-fsharp.png" />
-          &nbsp;
-          Bolero
-        </a>
-      </div>
-    </nav>
-    <div id="main">@(await Html.RenderComponentAsync<TimonWebApp.Client.Main.MyApp>(BoleroHostConfig))</div>
+  <div id="main">@(await Html.RenderComponentAsync<TimonWebApp.Client.Main.MyApp>(BoleroHostConfig))</div>
     @Html.RenderBoleroScript(BoleroHostConfig)
+  <script>
+          window.generalFunctions = {
+              onkeyUp: function (event) {
+                  if (event.key == "Escape") document.getElementById("cancelButton").click();
+                  else if (event.key == "Enter") document.getElementById("confirmButton").click();
+              },
+              registerForOnKeyUp: function () {
+                  document.addEventListener("keyup", this.onkeyUp)
+              },
+              removeOnKeyUp: function () {
+                  document.removeEventListener("keyup", this.onkeyUp);
+              }
+  
+          };
+          function setCookie(name, value, days) {
+              var expires = "";
+              if (days) {
+                  var date = new Date();
+                  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                  expires = "; expires=" + date.toUTCString();
+              }
+              document.cookie = name + "=" + (value || "") + expires + "; samesite=lax; secure; path=/";
+          }
+          function getCookie(name) {
+              var nameEQ = name + "=";
+              var ca = document.cookie.split(';');
+              for (var i = 0; i < ca.length; i++) {
+                  var c = ca[i];
+                  while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                  if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+              }
+              return null;
+          }
+          function eraseCookie(name) {
+              document.cookie = name + '=; Max-Age=-99999999;';
+          }
+      </script>
   </body>
 </html>

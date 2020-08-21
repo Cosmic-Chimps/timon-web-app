@@ -20,12 +20,10 @@ let init jsRuntime =
 
 let update message model =
     match message with
-    | Noupe -> { model with X = 100}
+    | Noupe -> { model with X = 200}
+
+
+type HomeTemplate = Template<"wwwroot/home.html">
 
 let view model dispatch =
-    div[][
-        a [attr.href "/login"] [text "Go to Login"]
-        p[][
-            text "Hello World 88"
-        ]
-    ]
+    HomeTemplate().Elt()

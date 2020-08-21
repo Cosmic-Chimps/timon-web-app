@@ -12,19 +12,22 @@ type LoginRequest = {
 }
 let [<Literal>] loginResponseJson = """
 {
-  "scope": "",
-  "access_token": "",
+  "access_token": "string",
   "expires_in": 3600,
-  "refresh_token": "",
-  "token_type": ""
+  "username": "string"
 }
 """
-type LoginResponse = JsonProvider<loginResponseJson>
+type LoginResponseProvider = JsonProvider<loginResponseJson>
 
+//type LoginResponse = {
+//    AccessToken: string
+//    ExpiresIn: int
+//    Username: string
+//}
 type AuthService =
     {
         /// Sign into the application.
-        ``sign-in`` : LoginRequest -> Async<option<LoginResponse.Root>>
+        ``sign-in`` : LoginRequest -> Async<option<Common.Authentication>>
         
         /// Get the user's name, or None if they are not authenticated.
         ``get-user-name`` : unit -> Async<string>

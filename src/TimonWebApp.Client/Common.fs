@@ -21,7 +21,15 @@ type Authentication = {
     Token : string;
     TimeStamp : DateTime;
 }
+
+[<JsonFSharpConverter>]
+type TimonConfiguration = {
+    Endpoint : string
+}
+
+type ConfigurationState = NotInitialized | Success of TimonConfiguration
 type AuthState = NotTried | Failed | Success of Authentication
 type State = {
-    Authentication : AuthState;
+    Authentication : AuthState
+    Configuration: ConfigurationState
 }

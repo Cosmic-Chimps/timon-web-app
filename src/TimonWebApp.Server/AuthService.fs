@@ -6,6 +6,7 @@ open System.Text.Json.Serialization
 open Microsoft.AspNetCore.Hosting
 open Bolero.Remoting
 open Bolero.Remoting.Server
+open Microsoft.Extensions.Configuration
 open TimonWebApp
 open FsHttp
 open FsHttp.DslCE
@@ -13,18 +14,20 @@ open FSharp.Json
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Services
 
-type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment) =
+type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfiguration) =
     inherit RemoteHandler<Client.Services.AuthService>()
 
     let serializerOptions = JsonSerializerOptions()
     do serializerOptions.Converters.Add(JsonFSharpConverter())
 
+    let endpoint = config.["TimonEndPoint"]
+    
     override this.Handler =
         {
             ``sign-in`` = fun (loginRequest) -> async {
                 let res = http
                             {
-                                POST "http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/login"
+                                POST (sprintf "%s/login" endpoint)
                                 body
                                 json (Json.serialize loginRequest)
                             }
@@ -38,11 +41,6 @@ type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment) =
                     User = loginRequest.Email
                 }
                 return Some(loginResponse)
-//                if password = "password" then
-//                    do! ctx.HttpContext.AsyncSignIn(username, TimeSpan.FromDays(365.))
-//                    return Some username
-//                else
-//                    return None
             }
 
             ``sign-out`` = fun () -> async {
@@ -51,5 +49,25 @@ type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment) =
 
             ``get-user-name`` = ctx.Authorize <| fun () -> async {
                 return ctx.HttpContext.User.Identity.Name
+            }
+            
+            ``get-config`` = fun () -> async {
+                let endpoint = config.["TimonEndpoint"]
+                return {
+                    Endpoint = endpoint
+                }
+            }
+            
+            links = fun () -> async {
+                let! response = 
+                    httpAsync {
+                        GET (sprintf "%s/link" endpoint)
+                    }
+                let links =
+                    response
+                    |> toText
+                    |> GetLinkResponse.Parse
+                    
+                return links
             }
         }

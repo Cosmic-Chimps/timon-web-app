@@ -43,46 +43,7 @@
                             </p>
                     </div>
                     <h3 class="title is-3">Recent</h3>
-                    <div class="box">
-                        <article class="media">
-                            <figure class="media-left">
-                                <p class="image is-64x64">
-                                    <img src="https://bulma.io/images/placeholders/128x128.png">
-                                </p>
-                            </figure>
-                            <div class="media-content">
-                                <div class="content">
-                                    <p>
-                                        <strong>Datos de 235 millones de cuentas de Instagram, TikTok y YouTube estuvieron expuesto</strong> 
-                                        <br/>
-                                        <small>via: fayerwayer.com</small> <small>shared by: illya@h-a-i.net</small> <small>shared at: 2020-10-01 11:00</small>
-                                        <br>
-                                        Social Data, una empresa que vende datos sobre influencers a vendedores, expuso la base de datos sin contraseña. Tampoco contaban con otra forma de autenticación para acceder a la base.
-                                    </p>
-                                </div>
-                                <nav class="level is-mobile">
-                                    <div class="level-left">
-                                        <a class="level-item">
-                                            <span>Abc</span>
-                                        </a>
-                                        <a class="level-item">
-                                            <span>Def</span>
-                                        </a>
-                                    </div>
-                                </nav>
-                                <nav class="level is-mobile">
-                                    <div class="level-left">
-                                        <a class="level-item">
-                                            <span>Devops</span>
-                                        </a>
-                                        <a class="level-item">
-                                            <span>Timon</span>
-                                        </a>
-                                    </div>
-                                </nav>
-                            </div>
-                        </article>
-                    </div>
+                    ${LinkList}
             </div>
         </div>
     </div>
@@ -237,3 +198,43 @@
     });
 
 </script>
+
+<template id="LinkItem">
+    <div class="box">
+        <article class="media">
+            <figure class="media-left">
+                <p class="image is-64x64">
+                    <img src="https://bulma.io/images/placeholders/128x128.png">
+                </p>
+            </figure>
+            <div class="media-content">
+                <div class="content">
+                    <p>
+                        <strong><a href="${Url}" target="_blank">${Title}</a></strong>
+                        <br/>
+                        <small>via: ${DomainName}</small> <small>shared by: ${SharedBy}</small> <small>shared at: ${Date}</small>
+                        <br>
+                        ${ShortDescription}
+                    </p>
+                </div>
+                <nav class="level is-mobile">
+                    <div class="level-left">
+                        <a class="level-item">
+                            <span>Abc</span>
+                        </a>
+                        <a class="level-item">
+                            <span>Def</span>
+                        </a>
+                    </div>
+                </nav>
+                <nav class="level is-mobile">
+                    <div class="level-left">
+                        <a class="level-item">
+                            <span>${ChannelName}</span>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </article>
+    </div>
+</template>

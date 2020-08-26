@@ -1,9 +1,9 @@
 module TimonWebApp.Client.Services
 
+open System.Text.Json
 open FSharp.Data
 open FsHttp
 open FsHttp.DslCE
-open FSharp.Json
 open Bolero.Remoting
 
 type LoginRequest = {
@@ -19,11 +19,8 @@ let [<Literal>] loginResponseJson = """
 """
 type LoginResponseProvider = JsonProvider<loginResponseJson>
 
-//type LoginResponse = {
-//    AccessToken: string
-//    ExpiresIn: int
-//    Username: string
-//}
+type GetLinkResponse = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/link">
+
 type AuthService =
     {
         /// Sign into the application.
@@ -34,24 +31,30 @@ type AuthService =
 
         /// Sign out from the application.
         ``sign-out`` : unit -> Async<unit>
+        
+        /// Sign out from the application.
+        ``get-config`` : unit -> Async<Common.TimonConfiguration>
+        
+        links : unit -> Async<GetLinkResponse.Root array>
     }
 
     interface IRemoteService with
         member this.BasePath = "/auth"
 
-//let login (payload: LoginRequest) =
-//    http {
-//        POST "http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/login"
-//        body
-//        json (Json.serialize payload)
-//    }
-//    |> toText
-//    |> LoginResponse.Parse
+let getLinks endpoint =
+    async {
+        let httpClient = new System.Net.Http.HttpClient()
+        let url = (sprintf "%s/link" endpoint)
+        let! response = httpClient.GetAsync(url) |> Async.AwaitTask
+        response.EnsureSuccessStatusCode () |> ignore
+        let! content = response.Content.ReadAsStringAsync() |> Async.AwaitTask
+        let links = GetLinkResponse.Parse(content)
+        return links
+    }
 
-//let getLinks =
-//    http {
-//        GET @"https://reqres.in/api/users?page=2&delay=3"
-//    }
-//    |> toJson
-//    |> fun json -> json?page.AsInteger()
-//    
+let asyncUpper (txt : string) =
+    async {
+        do! Async.Sleep 1000
+
+        return txt.ToUpper()
+    }

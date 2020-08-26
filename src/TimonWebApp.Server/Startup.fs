@@ -1,9 +1,11 @@
 namespace TimonWebApp.Server
 
+open System
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Bolero.Remoting.Server
 open Bolero.Server.RazorHost
@@ -49,9 +51,20 @@ module Program =
 
     [<EntryPoint>]
     let main args =
+        let environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+
+        let environment' =
+            if String.IsNullOrEmpty(environment) then "Production" else environment
+
+        let configuration = ConfigurationBuilder().AddJsonFile("appsettings.json", false, true)
+                                       .AddJsonFile(sprintf "appsettings.%s.json" environment', true)
+                                       .AddEnvironmentVariables()
+                                       .Build()
+                                         
         WebHost
             .CreateDefaultBuilder(args)
             .UseStaticWebAssets()
+            .UseConfiguration(configuration)
             .UseStartup<Startup>()
             .Build()
             .Run()

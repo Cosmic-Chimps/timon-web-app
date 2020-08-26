@@ -3,7 +3,6 @@ module TimonWebApp.Client.Pages.Login
 open System
 open Elmish
 open Bolero.Html
-open TimonWebApp.Client
 open TimonWebApp.Client.BoleroHelpers
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages
@@ -30,13 +29,13 @@ with
     
 type Message =
     | DoLogin
-    | LoginSuccess of option<Common.Authentication>
-    | SignInSuccessful of Common.Authentication
+    | LoginSuccess of option<Authentication>
+    | SignInSuccessful of Authentication
     | LoginError of exn
     | Focused of string
     | SetFormField of string *string
     
-let init jsRuntime =
+let init _ =
     Model.Default, Cmd.none
 
 let validateForm (form : LoginInput) =
@@ -56,7 +55,7 @@ let validateForm (form : LoginInput) =
         Password =  cannotBeBlank t (nameof form.Password) form.Password
     }
 
-let update (remote: AuthService) message (model , commonState: State) =
+let update (remote: AuthService) message (model , _: State) =
     let validateForced form =
         let validated = validateForm form
         {model with CurrentLogin = form; ValidatedLogin = Some validated; FailureReason = None}
@@ -136,7 +135,7 @@ let view model dispatch =
                                     ]
                                 ]
                             | None -> ()
-
+        
                         let focused = (fun name -> Action<_>(fun _ -> dispatch (Focused name)))
                         let formFieldItem = Controls.formFieldItem model.ValidatedLogin model.Focus focused
                         let pd name = fun v -> dispatch (SetFormField(name,v ))

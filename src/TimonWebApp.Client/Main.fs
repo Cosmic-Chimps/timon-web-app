@@ -33,6 +33,9 @@ type Message =
     | TokenNotFound
     | SignOutRequested
     | SignedOut
+    | ConfigurationRead of Common.ConfigurationState
+    | ConfigurationNotFound
+    | RemoveBuffer
 
 /// The Elmish application's model.
 type Model =
@@ -49,7 +52,11 @@ let init =
       SignedInAs = None
       SignInFailed = false
       BufferedCommand = Cmd.none
-      State = { Authentication = Common.AuthState.NotTried } },
+      State = {
+          Authentication = Common.AuthState.NotTried
+          Configuration = Common.ConfigurationState.NotInitialized
+      }
+    },
     Cmd.none
 
 
@@ -62,8 +69,16 @@ let initLogin (jsRunTime: IJSRuntime) model =
     initPage (Login.init jsRunTime) model LoginMsg Login
 
 let initHome (jsRunTime: IJSRuntime) model =
-    initPage (Home.init jsRunTime) model HomeMsg Home
-    
+    initPage (Home.init jsRunTime model.State.Configuration) model HomeMsg Home
+
+let loadConfiguration (remote: AuthService) model =
+    let doWork() =
+        async {
+            let! config = remote.``get-config``()
+            return Common.ConfigurationState.Success config |> ConfigurationRead
+        }
+    Cmd.ofAsync doWork () id (fun _ -> ConfigurationNotFound)
+
 let getToken (jsRuntime : IJSRuntime)  =
     let doWork () =
         async{
@@ -104,8 +119,8 @@ let signOut (jsRuntime : IJSRuntime)  =
         }
     Cmd.ofAsync doWork () id raise
 
-let update (jsRuntime: IJSRuntime) remote message model =
-//    jsRuntime.InvokeAsync("console.log", message.ToString()) |> ignore
+let update (jsRuntime: IJSRuntime) remote message (model: Model) =
+    jsRuntime.InvokeAsync("console.log", message.ToString()) |> ignore
     
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel
@@ -122,53 +137,99 @@ let update (jsRuntime: IJSRuntime) remote message model =
         else
             let m =
                 { model with
-                      Page = pageFn ({ Model = subModel })
-                      BufferedCommand = Cmd.map msgFn cmd }
+                      Page = pageFn ({ Model = subModel }) }
 
             m, Cmd.map CommonMessage commonCommand
 
     match message, model.Page with
+    | RemoveBuffer, _ -> { model with BufferedCommand = Cmd.none}, Cmd.none
+    
     | Rendered, _ ->
-        model, getToken jsRuntime
+        model, loadConfiguration remote model
+    
+    | ConfigurationRead config, _ ->
+        let state = { model.State with Configuration = config }
+        let m = { model with State = state }
+        m, getToken jsRuntime
+    
     | SignOutRequested, _ ->
-        model , signOut jsRuntime
+        model, signOut jsRuntime
+    
     | SignedOut, _ ->
-        {model with State = { Authentication = Common.AuthState.Failed}}, Cmd.ofMsg (SetPage (Home Router.noModel))
+        let state = { model.State with Authentication = Common.AuthState.Failed }
+        {model with State = state }, Cmd.ofMsg (SetPage (Home(Router.noModel)))
+        
+//        (fun pageModel -> Home(model.State.Configuration, pageModel))
+//    | HomeMsg _, Home (homePageModel)
+//        when (box homePageModel.Model |> function null -> true | _ -> false) ->
+//            jsRuntime.InvokeAsync("console.log", "home.ignore") |> ignore
+//            model, Cmd.none
+    
+    | HomeMsg msg, Home (homePageModel) ->
+//        genericUpdate Home.update (homePageModel.Model) msg HomeMsg Home
+//        let m, cmd = Home.update msg homeModel
+//        genericUpdate (Home.update)(homeModel.Model) msg HomeMsg Home
+        genericUpdate (Home.update jsRuntime remote) (homePageModel.Model) msg HomeMsg Home
+//        jsRuntime.InvokeAsync("console.log", "home.update") |> ignore
+//        jsRuntime.InvokeAsync("console.log", homePageModel) |> ignore
+//        let m, cmd = Home.update jsRuntime remote msg homePageModel.Model
+//        jsRuntime.InvokeAsync("console.log", cmd.Head) |> ignore
+//        { model with
+//              Page = Home({ Model = m }) },
+//        Cmd.map HomeMsg cmd
+    
     | LoginMsg (Login.Message.LoginSuccess authentication), _ ->
         match authentication with
         | Some auth ->
             model, setToken jsRuntime auth
         | None _ -> model, Cmd.ofMsg TokenNotFound
+    
     | LoginMsg msg, Login loginModel ->
         let m, cmd =
             Login.update remote msg (loginModel.Model, model.State)
 
         { model with
-              Page = Login({ Model = m })
-              BufferedCommand = Cmd.map LoginMsg cmd },
+              Page = Login({ Model = m }) },
         Cmd.map LoginMsg cmd
+    
     | TokenRead auth, _ ->
         { model with
                   State =
                       { model.State with
                             Authentication = Common.AuthState.Success auth } },
-                Cmd.ofMsg (SetPage (Home Router.noModel))
+                Cmd.ofMsg (SetPage (Home (Router.noModel)))
+    
     | TokenSaved auth, _ ->
         { model with
                   State =
                       { model.State with
                             Authentication = Common.AuthState.Success auth } },
-            Cmd.ofMsg (SetPage (Home Router.noModel))
-    | TokenSet , _ -> model , Cmd.none
+            Cmd.batch[ model.BufferedCommand; Cmd.ofMsg(RemoveBuffer)]
+    
+    | TokenSet , _ -> model, Cmd.batch[ model.BufferedCommand; Cmd.ofMsg(RemoveBuffer)]
+    
+    | TokenNotFound, _ ->
+        model, Cmd.ofMsg (SetPage (Home (Router.noModel)))
+//        model, Cmd.batch[ model.BufferedCommand; Cmd.ofMsg(RemoveBuffer)]
+
     | SetPage (Page.Login _), _ -> initLogin jsRuntime model
-    | SetPage (Page.Home _), _ -> initHome jsRuntime model
+    
+//    | SetPage (Page.Home _), _
+//        when (model.State.Configuration |> function ConfigurationState.NotInitialized -> true | _ -> false) ->
+//            {model with BufferedCommand = Cmd.ofMsg(message)}, Cmd.none
+////               model, Cmd.none
+
+    | SetPage (Page.Home _), _ ->
+        initHome jsRuntime model
+    
     | SetPage (Start), _
     | _ -> model, Cmd.none
 
 let defaultPageModel (jsRuntime: IJSRuntime) =
     function
     | Login model -> Router.definePageModel model (Login.init jsRuntime |> fst)
-    | Home model -> Router.definePageModel model (Home.init jsRuntime |> fst)
+    | Home (model) ->
+        Router.definePageModel model (Home.init jsRuntime ConfigurationState.NotInitialized |> fst)
     | Start -> ()
 
 let buildRouter (jsRuntime: IJSRuntime) =

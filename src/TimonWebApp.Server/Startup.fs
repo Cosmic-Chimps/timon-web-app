@@ -10,6 +10,7 @@ open Microsoft.Extensions.DependencyInjection
 open Bolero.Remoting.Server
 open Bolero.Server.RazorHost
 open Bolero.Templating.Server
+open TimonWebApp.Client.Services
 open TimonWebApp.Server.AuthService
 
 type Startup() =
@@ -19,12 +20,14 @@ type Startup() =
     member this.ConfigureServices(services: IServiceCollection) =
         services.AddMvc().AddRazorRuntimeCompilation() |> ignore
         services.AddServerSideBlazor() |> ignore
+        services.AddDataProtection() |> ignore;
         services
             .AddAuthorization()
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie()
                 .Services
             .AddRemoting<AuthService>()
+            .AddRemoting<LinkService>()
             .AddBoleroHost()
 #if DEBUG
             .AddHotReload(templateDir = __SOURCE_DIRECTORY__ + "/../TimonWebApp.Client")

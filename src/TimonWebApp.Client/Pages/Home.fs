@@ -5,7 +5,6 @@ open System.Collections.Generic
 open Elmish
 open Bolero
 open Bolero.Html
-open FsHttp.Dsl
 open Microsoft.JSInterop
 open TimonWebApp.Client
 open TimonWebApp.Client.Common
@@ -13,7 +12,7 @@ open TimonWebApp.Client.Services
 
 type Model = {
     Endpoint: string
-    Links: GetLinkResponse.Root array
+    Links: LinkView array
 }
 with
     static member Default = {
@@ -22,20 +21,16 @@ with
     }
     
 type Message =
-    | LinksLoaded of GetLinkResponse.Root array
+    | LinksLoaded of LinkView array
     | OnUpperResult of string
     | LoadLinks
 
 
 
-let init (jsRuntime: IJSRuntime) (configState: Common.ConfigurationState) =
-    let m = Model.Default
-    match configState with
-    | ConfigurationState.Success config ->
-        { m with Endpoint = config.Endpoint }, Cmd.ofMsg LoadLinks
-    | _ -> m, Cmd.none
+let init (jsRuntime: IJSRuntime) =
+    Model.Default, Cmd.none
 
-let update (jsRuntime: IJSRuntime) (remote: AuthService) (message: Message) (model: Model) =
+let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
     jsRuntime.InvokeAsync("console.log", "home.inner.update") |> ignore
     jsRuntime.InvokeAsync("console.log", message) |> ignore
     
@@ -47,14 +42,14 @@ let update (jsRuntime: IJSRuntime) (remote: AuthService) (message: Message) (mod
     | LoadLinks ->
 //        let cmd = Cmd.ofAsync remote.links () LinksLoaded raise
 //        let cmd = Cmd.ofFunc getLinks (model.Endpoint) LinksLoaded raise
-        let cmd = Cmd.ofAsync getLinks (model.Endpoint) LinksLoaded raise
+        let cmd = Cmd.ofAsync getLinks timonService LinksLoaded raise
         model, cmd
 //        model, Cmd.ofAsync asyncUpper "hola" OnUpperResult raise
     | _ -> failwith "" 
     
 type HomeTemplate = Template<"wwwroot/home.html">
 
-let viewLinkItems (links : IReadOnlyList<GetLinkResponse.Root> ) dispatcher =
+let viewLinkItems (links : IReadOnlyList<LinkView> ) dispatcher =
     forEach links (fun l ->
         HomeTemplate.LinkItem()
             .Url(l.Link.Url)

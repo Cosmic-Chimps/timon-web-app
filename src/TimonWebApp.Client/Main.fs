@@ -27,20 +27,22 @@ type Message =
     | LoginMsg of Login.Message
     | CommonMessage of Common.Message
     | Rendered
-    | TokenRead of Common.Authentication
-    | TokenSaved of Common.Authentication
-    | TokenSet
-    | TokenNotFound
+//    | TokenRead of Authentication
+//    | TokenSaved of Authentication
+//    | TokenSet
+//    | TokenNotFound
     | SignOutRequested
     | SignedOut
-    | ConfigurationRead of Common.ConfigurationState
+//    | ConfigurationRead of ConfigurationState
     | ConfigurationNotFound
     | RemoveBuffer
+    | RecvSignedInAs of option<string>
+    | Error of exn
 
 /// The Elmish application's model.
 type Model =
     { Page: Page
-      State: Common.State
+      State: State
       Error: string option
       SignedInAs: option<string>
       SignInFailed: bool
@@ -53,8 +55,8 @@ let init =
       SignInFailed = false
       BufferedCommand = Cmd.none
       State = {
-          Authentication = Common.AuthState.NotTried
-          Configuration = Common.ConfigurationState.NotInitialized
+          Authentication = AuthState.NotTried
+          Configuration = ConfigurationState.NotInitialized
       }
     },
     Cmd.none
@@ -69,57 +71,17 @@ let initLogin (jsRunTime: IJSRuntime) model =
     initPage (Login.init jsRunTime) model LoginMsg Login
 
 let initHome (jsRunTime: IJSRuntime) model =
-    initPage (Home.init jsRunTime model.State.Configuration) model HomeMsg Home
+    initPage (Home.init jsRunTime) model HomeMsg Home
 
-let loadConfiguration (remote: AuthService) model =
-    let doWork() =
-        async {
-            let! config = remote.``get-config``()
-            return Common.ConfigurationState.Success config |> ConfigurationRead
-        }
-    Cmd.ofAsync doWork () id (fun _ -> ConfigurationNotFound)
-
-let getToken (jsRuntime : IJSRuntime)  =
+let signOut (jsRuntime : IJSRuntime) (timonService: TimonService)  =
     let doWork () =
         async{
-            let! res =
-                jsRuntime.InvokeAsync<string>("getCookie", "token")
-                    .AsTask()
-                    |> Async.AwaitTask
-            return
-                match res with
-                | null -> TokenNotFound
-                | t ->
-                    t
-                    |> System.Net.WebUtility.UrlDecode
-                    |> JsonSerializer.Deserialize<Common.Authentication> |> TokenRead
-        }
-    Cmd.ofAsync doWork () id (fun _ -> TokenNotFound)
-    
-let setToken (jsRuntime : IJSRuntime) (token : Common.Authentication)  =
-    let doWork () =
-        async{
-            let ser = JsonSerializer.Serialize(token)
-            do!
-                jsRuntime.InvokeVoidAsync("setCookie", "token" , System.Net.WebUtility.UrlEncode(ser) , 7)
-                    .AsTask()
-                    |> Async.AwaitTask
-            return TokenSaved token
-        }
-    Cmd.ofAsync doWork () id raise
-
-let signOut (jsRuntime : IJSRuntime)  =
-    let doWork () =
-        async{
-            do!
-                jsRuntime.InvokeVoidAsync("eraseCookie", "token")
-                             .AsTask()
-                             |> Async.AwaitTask
+            do! timonService.AuthService.``sign-out``()
             return SignedOut
         }
     Cmd.ofAsync doWork () id raise
 
-let update (jsRuntime: IJSRuntime) remote message (model: Model) =
+let update (jsRuntime: IJSRuntime) (timonService: TimonService) message (model: Model) =
     jsRuntime.InvokeAsync("console.log", message.ToString()) |> ignore
     
     let genericUpdate update subModel msg msgFn pageFn =
@@ -145,79 +107,42 @@ let update (jsRuntime: IJSRuntime) remote message (model: Model) =
     | RemoveBuffer, _ -> { model with BufferedCommand = Cmd.none}, Cmd.none
     
     | Rendered, _ ->
-        model, loadConfiguration remote model
-    
-    | ConfigurationRead config, _ ->
-        let state = { model.State with Configuration = config }
-        let m = { model with State = state }
-        m, getToken jsRuntime
+        let cmdGetUserName = Cmd.ofAuthorized
+                                timonService.AuthService.``get-user-name`` ()
+                                RecvSignedInAs
+                                Error
+                                
+        let cmdLoadHome = Cmd.map HomeMsg (Cmd.ofMsg Home.Message.LoadLinks)
+        let cmd = Cmd.batch[cmdGetUserName; cmdLoadHome]
+        model, cmd
+            
+
+//    | RecvSignedInAs, _ ->
+//        model, Cmd.ofMsg Home.Message.LoadLinks
     
     | SignOutRequested, _ ->
-        model, signOut jsRuntime
+        model, signOut jsRuntime timonService
     
     | SignedOut, _ ->
-        let state = { model.State with Authentication = Common.AuthState.Failed }
+        let state = { model.State with Authentication = AuthState.Failed }
         {model with State = state }, Cmd.ofMsg (SetPage (Home(Router.noModel)))
-        
-//        (fun pageModel -> Home(model.State.Configuration, pageModel))
-//    | HomeMsg _, Home (homePageModel)
-//        when (box homePageModel.Model |> function null -> true | _ -> false) ->
-//            jsRuntime.InvokeAsync("console.log", "home.ignore") |> ignore
-//            model, Cmd.none
-    
+
     | HomeMsg msg, Home (homePageModel) ->
-//        genericUpdate Home.update (homePageModel.Model) msg HomeMsg Home
-//        let m, cmd = Home.update msg homeModel
-//        genericUpdate (Home.update)(homeModel.Model) msg HomeMsg Home
-        genericUpdate (Home.update jsRuntime remote) (homePageModel.Model) msg HomeMsg Home
-//        jsRuntime.InvokeAsync("console.log", "home.update") |> ignore
-//        jsRuntime.InvokeAsync("console.log", homePageModel) |> ignore
-//        let m, cmd = Home.update jsRuntime remote msg homePageModel.Model
-//        jsRuntime.InvokeAsync("console.log", cmd.Head) |> ignore
-//        { model with
-//              Page = Home({ Model = m }) },
-//        Cmd.map HomeMsg cmd
-    
+        genericUpdate (Home.update jsRuntime timonService) (homePageModel.Model) msg HomeMsg Home
+        
     | LoginMsg (Login.Message.LoginSuccess authentication), _ ->
         match authentication with
-        | Some auth ->
-            model, setToken jsRuntime auth
-        | None _ -> model, Cmd.ofMsg TokenNotFound
+        | Some _ ->
+            let state = { model.State with Authentication = AuthState.Success }
+            { model with SignedInAs = authentication; State = state}, Cmd.ofMsg (SetPage (Home (Router.noModel)))
+        | None _ -> model, Cmd.none
     
     | LoginMsg msg, Login loginModel ->
         let m, cmd =
-            Login.update remote msg (loginModel.Model, model.State)
-
-        { model with
-              Page = Login({ Model = m }) },
-        Cmd.map LoginMsg cmd
+            Login.update timonService msg (loginModel.Model, model.State)
+        { model with Page = Login({ Model = m }) }, Cmd.map LoginMsg cmd
     
-    | TokenRead auth, _ ->
-        { model with
-                  State =
-                      { model.State with
-                            Authentication = Common.AuthState.Success auth } },
-                Cmd.ofMsg (SetPage (Home (Router.noModel)))
-    
-    | TokenSaved auth, _ ->
-        { model with
-                  State =
-                      { model.State with
-                            Authentication = Common.AuthState.Success auth } },
-            Cmd.batch[ model.BufferedCommand; Cmd.ofMsg(RemoveBuffer)]
-    
-    | TokenSet , _ -> model, Cmd.batch[ model.BufferedCommand; Cmd.ofMsg(RemoveBuffer)]
-    
-    | TokenNotFound, _ ->
-        model, Cmd.ofMsg (SetPage (Home (Router.noModel)))
-//        model, Cmd.batch[ model.BufferedCommand; Cmd.ofMsg(RemoveBuffer)]
-
     | SetPage (Page.Login _), _ -> initLogin jsRuntime model
-    
-//    | SetPage (Page.Home _), _
-//        when (model.State.Configuration |> function ConfigurationState.NotInitialized -> true | _ -> false) ->
-//            {model with BufferedCommand = Cmd.ofMsg(message)}, Cmd.none
-////               model, Cmd.none
 
     | SetPage (Page.Home _), _ ->
         initHome jsRuntime model
@@ -229,7 +154,7 @@ let defaultPageModel (jsRuntime: IJSRuntime) =
     function
     | Login model -> Router.definePageModel model (Login.init jsRuntime |> fst)
     | Home (model) ->
-        Router.definePageModel model (Home.init jsRuntime ConfigurationState.NotInitialized |> fst)
+        Router.definePageModel model (Home.init jsRuntime |> fst)
     | Start -> ()
 
 let buildRouter (jsRuntime: IJSRuntime) =
@@ -238,13 +163,13 @@ let buildRouter (jsRuntime: IJSRuntime) =
 type NavbarTemplate = Template<"wwwroot/navbar.html">
 
 type NavbarEndItemsDisplay() =
-    inherit ElmishComponent<Common.AuthState, Message>()
+    inherit ElmishComponent<Model, Message>()
 
     override this.View model dispatch =
-        cond model
+        cond model.State.Authentication
         <| function
-        | Common.AuthState.NotTried
-        | Common.AuthState.Failed ->
+        | AuthState.NotTried
+        | AuthState.Failed ->
             div [ attr.``class`` Bulma.buttons ] [
                 a [ attr.``class``
                     <| String.concat " " [ Bulma.button; Bulma.``is-primary`` ] ] [
@@ -256,11 +181,11 @@ type NavbarEndItemsDisplay() =
                     text "Log in"
                 ]
             ]
-        | Common.AuthState.Success { User = user } ->
+        | AuthState.Success ->
             concat
                 [ div [attr.``class`` <| String.concat " " [ Bulma.``navbar-item``; Bulma.``has-dropdown``; Bulma.``is-hoverable`` ]] [
                     a [ attr.``class`` Bulma.``navbar-link`` ] [
-                        text user
+                        text model.SignedInAs.Value
                     ]
                     div [attr.``class`` <| String.concat " " [ Bulma.``navbar-dropdown``; Bulma.``is-right`` ]] [
                         a [ attr.``class`` <| String.concat " " [ Bulma.``navbar-item`` ] ] [
@@ -289,7 +214,7 @@ let view (js: IJSRuntime) (model: Model) dispatch =
         | Start -> h2 [] []
 
     let navbarEndItemsDisplay =
-        ecomp<NavbarEndItemsDisplay, _, _> [] model.State.Authentication dispatch
+        ecomp<NavbarEndItemsDisplay, _, _> [] model dispatch
 
     NavbarTemplate().navbarEndItems(navbarEndItemsDisplay).content(content).Elt()
 
@@ -315,9 +240,14 @@ type MyApp() =
 
     override this.Program =
         //        Program.mkSimple (fun _ -> initModel) update view
-        let remote = this.Remote<AuthService>()
+        let authService = this.Remote<AuthService>()
+        let linkService = this.Remote<LinkService>()
+        let timonService = {
+            LinkService = linkService
+            AuthService = authService
+        }
         let router = buildRouter (this.JSRuntime)
-        let update = update (this.JSRuntime) remote
+        let update = update (this.JSRuntime) timonService
         Program.mkProgram (fun _ -> init) (update) (view this.JSRuntime)
         |> Program.withRouter router
 #if DEBUG

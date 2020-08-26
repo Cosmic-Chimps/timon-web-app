@@ -9,13 +9,11 @@ open TimonWebApp.Client.Pages
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 
-type LoginInput = { Email : string; Password : string}
-
 type Model = {
     FailureReason : string option
     IsSignedIn : bool
-    CurrentLogin : LoginInput;
-    ValidatedLogin : Result<LoginInput,Map<string,string list>> option
+    CurrentLogin : LoginRequest;
+    ValidatedLogin : Result<LoginRequest,Map<string,string list>> option
     Focus : string option
 }
 with
@@ -29,8 +27,8 @@ with
     
 type Message =
     | DoLogin
-    | LoginSuccess of option<Authentication>
-    | SignInSuccessful of Authentication
+    | LoginSuccess of option<string>
+    | SignInSuccessful of string
     | LoginError of exn
     | Focused of string
     | SetFormField of string *string
@@ -38,7 +36,7 @@ type Message =
 let init _ =
     Model.Default, Cmd.none
 
-let validateForm (form : LoginInput) =
+let validateForm (form : LoginRequest) =
     let cannotBeBlank (validator:Validator<string>) name value =
         validator.Test name value
         |> validator.NotBlank (name + " cannot be blank")
@@ -55,7 +53,7 @@ let validateForm (form : LoginInput) =
         Password =  cannotBeBlank t (nameof form.Password) form.Password
     }
 
-let update (remote: AuthService) message (model , _: State) =
+let update (timonService: TimonService) message (model , _: State) =
     let validateForced form =
         let validated = validateForm form
         {model with CurrentLogin = form; ValidatedLogin = Some validated; FailureReason = None}
@@ -68,27 +66,36 @@ let update (remote: AuthService) message (model , _: State) =
 
     match message, model with
     | Focused field, _ -> { model with Focus = Some field}, Cmd.none
+    
     | SetFormField("Email",value),_ ->
         {model.CurrentLogin with Email = value} |> validate, Cmd.none
+        
     | SetFormField("Password",value),_ ->
         {model.CurrentLogin with Password = value} |> validate, Cmd.none
+        
     | _ , ({ ValidatedLogin = Some(Error _) }) -> model , Cmd.none
+    
     | DoLogin, { ValidatedLogin = None } ->
         model.CurrentLogin |> validateForced, Cmd.ofMsg (DoLogin)
+        
     | DoLogin, _ ->
-        model,
-        Cmd.ofAsync
-            remote.``sign-in`` ({
-                Email = model.CurrentLogin.Email
-                Password = model.CurrentLogin.Password
-            })
-            LoginSuccess
-            LoginError
+        let loginRequest = {
+            Email = model.CurrentLogin.Email
+            Password = model.CurrentLogin.Password
+        }
+        
+        model, Cmd.ofAsync
+                logIn (timonService, loginRequest)
+                LoginSuccess
+                LoginError
+            
     | LoginSuccess value, _ ->
         match value with
         | Some loginResponse -> { model with IsSignedIn = true}, Cmd.ofMsg(SignInSuccessful loginResponse)
         | None -> { model with IsSignedIn = false }, Cmd.none
+        
     | LoginError exn, _ -> { model with FailureReason = Some exn.Message }, Cmd.none
+    
     | _ -> failwith ""
 
 let view model dispatch =

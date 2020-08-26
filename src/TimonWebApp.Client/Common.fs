@@ -28,7 +28,7 @@ type TimonConfiguration = {
 }
 
 type ConfigurationState = NotInitialized | Success of TimonConfiguration
-type AuthState = NotTried | Failed | Success of Authentication
+type AuthState = NotTried | Failed | Success
 type State = {
     Authentication : AuthState
     Configuration: ConfigurationState

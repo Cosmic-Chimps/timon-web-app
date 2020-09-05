@@ -3,6 +3,7 @@ module TimonWebApp.Client.Pages.Login
 open System
 open Elmish
 open Bolero.Html
+open Microsoft.JSInterop
 open TimonWebApp.Client.BoleroHelpers
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages
@@ -10,29 +11,30 @@ open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 
 type Model = {
-    FailureReason : string option
-    IsSignedIn : bool
-    CurrentLogin : LoginRequest;
-    ValidatedLogin : Result<LoginRequest,Map<string,string list>> option
-    Focus : string option
+    failureReason : string option
+    isSignedIn : bool
+    currentLogin : LoginRequest
+    validatedLogin : Result<LoginRequest,Map<string,string list>> option
+    focus : string option
 }
 with
     static member Default = {
-         CurrentLogin =  {Email = "" ; Password = "" };
-         ValidatedLogin =  None;
-         IsSignedIn = false;
-         FailureReason = None
-         Focus = None
+         currentLogin =  { email = "" ; password = "" };
+         validatedLogin =  None;
+         isSignedIn = false;
+         failureReason = None
+         focus = None
     }
-    
+
 type Message =
     | DoLogin
+    | LoginValidated
     | LoginSuccess of option<string>
     | SignInSuccessful of string
     | LoginError of exn
     | Focused of string
     | SetFormField of string *string
-    
+
 let init _ =
     Model.Default, Cmd.none
 
@@ -41,64 +43,67 @@ let validateForm (form : LoginRequest) =
         validator.Test name value
         |> validator.NotBlank (name + " cannot be blank")
         |> validator.End
-        
+
     let validEmail (validator:Validator<string>) name value =
         validator.Test name value
         |> validator.NotBlank (name + " cannot be blank")
         |> validator.IsMail (name + " should be an email format")
         |> validator.End
-        
+
     all <| fun t -> {
-        Email = validEmail t (nameof form.Email) form.Email
-        Password =  cannotBeBlank t (nameof form.Password) form.Password
+        email = validEmail t "Email" form.email
+        password =  cannotBeBlank t "Password" form.password
     }
 
 let update (timonService: TimonService) message (model , _: State) =
     let validateForced form =
         let validated = validateForm form
-        {model with CurrentLogin = form; ValidatedLogin = Some validated; FailureReason = None}
-        
+        {model with currentLogin = form; validatedLogin = Some validated; failureReason = None}
+
     let validate form =
-        match model.ValidatedLogin with
+        match model.validatedLogin with
         | None  ->
-            {model with CurrentLogin = form; FailureReason = None}
+            {model with currentLogin = form; failureReason = None}
         | Some _ -> validateForced form
 
     match message, model with
-    | Focused field, _ -> { model with Focus = Some field}, Cmd.none
-    
+    | Focused field, _ -> { model with focus = Some field}, Cmd.none
+
     | SetFormField("Email",value),_ ->
-        {model.CurrentLogin with Email = value} |> validate, Cmd.none
-        
+        {model.currentLogin with email = value} |> validate, Cmd.none
+
     | SetFormField("Password",value),_ ->
-        {model.CurrentLogin with Password = value} |> validate, Cmd.none
-        
-    | _ , ({ ValidatedLogin = Some(Error _) }) -> model , Cmd.none
-    
-    | DoLogin, { ValidatedLogin = None } ->
-        model.CurrentLogin |> validateForced, Cmd.ofMsg (DoLogin)
-        
+        {model.currentLogin with password = value} |> validate, Cmd.none
+
+    | _ , ({ validatedLogin = Some(Error _) }) -> model , Cmd.none
+
     | DoLogin, _ ->
+        model.currentLogin |> validateForced, Cmd.ofMsg (LoginValidated)
+
+    | LoginValidated, _ ->
         let loginRequest = {
-            Email = model.CurrentLogin.Email
-            Password = model.CurrentLogin.Password
+            email = model.currentLogin.email
+            password = model.currentLogin.password
         }
-        
+
         model, Cmd.ofAsync
                 logIn (timonService, loginRequest)
                 LoginSuccess
                 LoginError
-            
-    | LoginSuccess value, _ ->
-        match value with
-        | Some loginResponse -> { model with IsSignedIn = true}, Cmd.ofMsg(SignInSuccessful loginResponse)
-        | None -> { model with IsSignedIn = false }, Cmd.none
-        
-    | LoginError exn, _ -> { model with FailureReason = Some exn.Message }, Cmd.none
-    
+
+    | LoginSuccess _, _ ->
+        model, Cmd.none
+
+//    | LoginSuccess value, _ ->
+//        match value with
+//        | Some loginResponse -> { model with IsSignedIn = true}, Cmd.ofMsg(SignInSuccessful loginResponse)
+//        | None -> { model with IsSignedIn = false }, Cmd.none
+
+    | LoginError exn, _ -> { model with failureReason = Some "Verify your email or password" }, Cmd.none
+
     | _ -> failwith ""
 
-let view model dispatch =
+let view (jsRuntime: IJSRuntime) model dispatch =
     div [ attr.``class``
           <| String.concat
               " "
@@ -119,7 +124,7 @@ let view model dispatch =
                                Bulma.``is-offset-2`` ] ] [
                     h1 [ attr.``class``
                          <| String.concat " " [ Bulma.title; Bulma.``has-text-grey`` ] ] [
-                        text "Login"
+                        text "Log in"
                     ]
                     hr [ attr.``class`` "login-hr" ]
                     div [ attr.``class`` Bulma.box ] [
@@ -134,7 +139,7 @@ let view model dispatch =
                                        Bulma.``is-5`` ] ] [
                             text "Please enter your email and password"
                         ]
-                        match model.FailureReason with
+                        match model.failureReason with
                             | Some(value) ->
                                 div[attr.``class`` <| String.concat " " [Bulma.``is-danger``; Bulma.message]][
                                     div[attr.``class`` Bulma.``message-header``] [
@@ -142,50 +147,50 @@ let view model dispatch =
                                     ]
                                 ]
                             | None -> ()
-        
+
                         let focused = (fun name -> Action<_>(fun _ -> dispatch (Focused name)))
-                        let formFieldItem = Controls.formFieldItem model.ValidatedLogin model.Focus focused
+                        let formFieldItem = Controls.formFieldItem model.validatedLogin model.focus focused
                         let pd name = fun v -> dispatch (SetFormField(name,v ))
-                        
+
                         div [] [
                             concat [
                                 comp<KeySubscriber> [] []
-                                formFieldItem "email" "Email" model.CurrentLogin.Email (pd (nameof model.CurrentLogin.Email))
-                                formFieldItem "password" "Password" model.CurrentLogin.Password (pd (nameof model.CurrentLogin.Password))
+                                formFieldItem "email" "Email" model.currentLogin.email (pd "Email")
+                                formFieldItem "password" "Password" model.currentLogin.password (pd "Password")
                                 button [ attr.id "confirmButton"
                                          attr.``class``
                                          <| String.concat
                                              " "
                                                 [ Bulma.button
                                                   Bulma.``is-block``
-                                                  Bulma.``is-success``
+                                                  Bulma.``is-primary``
                                                   Bulma.``is-large``
                                                   Bulma.``is-fullwidth`` ]
                                          on.click (fun _ -> dispatch DoLogin) ] [
-                                    text "Login"
+                                    text "Log in"
                                 ]
                             ]
                         ]
                     ]
                     div [ attr.``class`` Bulma.columns ] [
                         div [ attr.``class`` Bulma.column ] [
-                            a [ attr.href ""
+                            a [ attr.href "/sign-up"
                                 attr.``class`` Bulma.``has-text-grey`` ] [
-                                text "Sign up1"
+                                text "Sign up"
                             ]
                         ]
                         div [ attr.``class`` Bulma.column ] [
                             a [ attr.href ""
                                 attr.``class`` Bulma.``has-text-grey`` ] [
-                                text "Forgot Password"
+                                text "Forgot password"
                             ]
                         ]
-                        div [ attr.``class`` Bulma.column ] [
-                            a [ attr.href ""
-                                attr.``class`` Bulma.``has-text-grey`` ] [
-                                text "Need Help?"
-                            ]
-                        ]
+//                        div [ attr.``class`` Bulma.column ] [
+//                            a [ attr.href ""
+//                                attr.``class`` Bulma.``has-text-grey`` ] [
+//                                text "Need Help?"
+//                            ]
+//                        ]
                     ]
                 ]
             ]

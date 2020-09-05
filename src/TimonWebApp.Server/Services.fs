@@ -1,6 +1,7 @@
-namespace TimonWebApp.Server.AuthService
+module TimonWebApp.Server.AuthService
 
 open System
+open System.Net
 open System.Security.Claims
 open System.Text
 open System.Text.Json
@@ -9,65 +10,142 @@ open Microsoft.AspNetCore.DataProtection
 open Microsoft.AspNetCore.Hosting
 open Bolero.Remoting
 open Bolero.Remoting.Server
+open Microsoft.AspNetCore.Mvc
 open Microsoft.Extensions.Configuration
 open TimonWebApp
 open FsHttp.DslCE
 open FsHttp
 open FSharp.Json
-open TimonWebApp.Client.Common
 open TimonWebApp.Client.Services
 open TimonWebApp.Server
 open FSharp.Data
 
-type LoginProvider = JsonProvider<Constants.loginResponseJson>
+type TokenProvider = JsonProvider<Constants.tokenResponseJson>
 
+type RefreshTokenRequest = {
+    refreshToken: string
+}
+
+let getCommons (config: IConfiguration) (dataProvider: IDataProtectionProvider) =
+    let protector = dataProvider.CreateProtector(Constants.providerKey)
+    let endpoint = config.["TimonEndPoint"]
+    (endpoint, protector)
+
+let singInUser (ctx: IRemoteContext) (protector: IDataProtector) email (res: TokenProvider.Root) = async {
+        printf "%s" res.RefreshToken
+        let refreshTokenProtected = protector.Protect(res.RefreshToken)
+        let expiresAt = DateTime.UtcNow.Add(TimeSpan.FromSeconds(float(res.ExpiresIn)))
+        let claims = [
+            Claim("TimonToken", res.AccessToken)
+            Claim("TimonRefreshToken", refreshTokenProtected)
+            Claim("TimonExpiredDate", expiresAt.ToString())
+        ]
+
+        do! ctx.HttpContext.AsyncSignIn(email, claims = claims, persistFor = TimeSpan.FromDays(365.))
+
+        return res.AccessToken
+    }
+
+let renewToken endpoint refreshTokenRequest =
+    httpAsync
+        {
+            POST (sprintf "%s/refresh-token" endpoint)
+            body
+            json (Json.serialize refreshTokenRequest)
+        }
+        |> Async.RunSynchronously
+        |> toText
+        |> TokenProvider.Parse
+
+let getToken (ctx: IRemoteContext) (protector: IDataProtector) endpoint = async {
+        let expireAt = ctx.HttpContext.User.Claims
+                        |> Seq.find (fun c ->  c.Type = "TimonExpiredDate" )
+                        |> fun c -> DateTime.Parse(c.Value)
+
+        let timonRefreshToken = ctx.HttpContext.User.Claims
+                                |> Seq.find (fun c ->  c.Type = "TimonRefreshToken" )
+                                |> fun c -> c.Value
+                                |> protector.Unprotect
+
+        let timonToken = ctx.HttpContext.User.Claims
+                        |> Seq.find (fun c ->  c.Type = "TimonToken" )
+                        |> fun c -> c.Value
+
+        return! match expireAt < DateTime.UtcNow with
+                 | true ->
+                    renewToken endpoint { refreshToken = timonRefreshToken }
+                    |>  singInUser ctx protector ctx.HttpContext.User.Identity.Name
+                 | false -> async { return timonToken }
+    }
+
+let hasResponseValidStatus response =
+    match response.statusCode with
+    | HttpStatusCode.Accepted
+    | HttpStatusCode.OK
+    | HttpStatusCode.Created -> Some response
+    | _ -> None
+
+let getResponseBodyAsText response =
+    match response with
+    | Some r -> Some (toText r)
+    | None -> None
+
+let parseBodyAsObject<'T> (parse : string -> 'T) body  =
+    match body with
+    | Some r -> Some (parse(r))
+    | None -> None
 type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfiguration, dataProvider: IDataProtectionProvider) =
     inherit RemoteHandler<Client.Services.AuthService>()
 
-    let protector = dataProvider.CreateProtector(Constants.Key);
-    let serializerOptions = JsonSerializerOptions()
-    do serializerOptions.Converters.Add(JsonFSharpConverter())
+    let endpoint, protector = getCommons config dataProvider
 
-    let endpoint = config.["TimonEndPoint"]
-    
     override this.Handler = {
         ``sign-in`` = fun (loginRequest) -> async {
-            let res = http
-                        {
-                            POST (sprintf "%s/login" endpoint)
-                            body
-                            json (Json.serialize loginRequest)
-                        }
-                        |> toText
-                        |> LoginProvider.Parse
-                        
-            let refreshTokenProtected = protector.Protect(res.RefreshToken);
-            let claims = [Claim("TimonToken", res.AccessToken); Claim("TimonRefreshToken", refreshTokenProtected) ]
+            let result = httpAsync
+                            {
+                                POST (sprintf "%s/login" endpoint)
+                                body
+                                json (Json.serialize loginRequest)
+                            }
+                            |> Async.RunSynchronously
+                            |> hasResponseValidStatus
+                            |> getResponseBodyAsText
+                            |> parseBodyAsObject<TokenProvider.Root> (TokenProvider.Parse)
+                            |> fun (x) ->
+                                match x with
+                                | Some r ->
+                                    singInUser ctx protector loginRequest.email r
+                                    |> Async.RunSynchronously
+                                    |> Some
+                                | None -> None
 
-            do! ctx.HttpContext.AsyncSignIn(res.Username, claims = claims, persistFor = TimeSpan.FromDays(365.))
-            
-//            let loginResponse = {
-//                Token = res.AccessToken
-//                TimeStamp = DateTime.UtcNow.AddSeconds(float(res.ExpiresIn))
-//                User = loginRequest.Email
-//            }
-            return loginRequest.Email
-//            let! res =
-//                Request.createUrl Post (sprintf "%s/login" endpoint)
-//                |> Request.setHeader (ContentType (ContentType.create("application", "json")))
-//                |> Request.bodyStringEncoded (Json.serialize loginRequest) (Encoding.UTF8)
-//                |> getResponse
-//                |> Job.bind Response.readBodyAsString
-//                |> Job.map LoginProvider.Parse
-//                |> Job.toAsync
-//
-//            
-//            let refreshTokenProtected = protector.Protect(res.RefreshToken);
-//            let claims = [Claim("TimonToken", res.AccessToken); Claim("TimonRefreshToken", refreshTokenProtected) ]
-//
-//            do! ctx.HttpContext.AsyncSignIn(res.Username, claims = claims, persistFor = TimeSpan.FromDays(365.))
-//
-//            return res.Username
+            return match result with
+                   | Some _ -> loginRequest.email
+                   | None -> failwith "Not Found"
+        }
+
+        ``sign-up`` = fun (signUpRequest) -> async {
+            let result = httpAsync
+                            {
+                                POST (sprintf "%s/register" endpoint)
+                                body
+                                json (Json.serialize signUpRequest)
+                            }
+                            |> Async.RunSynchronously
+                            |> hasResponseValidStatus
+                            |> getResponseBodyAsText
+                            |> parseBodyAsObject<TokenProvider.Root> (TokenProvider.Parse)
+                            |> fun (x) ->
+                                match x with
+                                | Some r ->
+                                    singInUser ctx protector signUpRequest.email r
+                                    |> Async.RunSynchronously
+                                    |> Some
+                                | None -> None
+
+            return match result with
+                   | Some _ -> signUpRequest.email
+                   | None -> failwith "Not Found"
         }
 
         ``sign-out`` = fun () -> async {
@@ -75,9 +153,13 @@ type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfigu
         }
 
         ``get-user-name`` = ctx.Authorize <| fun () -> async {
-            return ctx.HttpContext.User.Identity.Name
+            return
+                match ctx.HttpContext.TryUsername() with
+                | Some email -> email
+                | None -> ""
+//            return ctx.HttpContext.User.Identity.Name
         }
-        
+
         ``get-config`` = fun () -> async {
             let endpoint = config.["TimonEndpoint"]
             return {
@@ -89,21 +171,69 @@ type AuthService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfigu
 type LinkService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfiguration, dataProvider: IDataProtectionProvider) =
     inherit RemoteHandler<Client.Services.LinkService>()
 
-    let protector = dataProvider.CreateProtector(Constants.Key)
-    
-    let serializerOptions = JsonSerializerOptions()
-    do serializerOptions.Converters.Add(JsonFSharpConverter())
+    let endpoint, protector = getCommons config dataProvider
 
-    let endpoint = config.["TimonEndPoint"]
-    
     override this.Handler = {
-        ``get-links`` = fun () -> async {
-            let endpoint = sprintf "%s/link" endpoint
-            return! Request.createUrl Get endpoint
-                    |> getResponse
-                    |> Job.bind Response.readBodyAsString
-//                    |> Job.map LinkViewProvider.Parse
-                    |> Job.toAsync
-                
+        ``get-links`` = fun (queryParams) -> async {
+            let! response =
+                    httpAsync {
+                        GET (sprintf "%s/links?channel=%s" endpoint queryParams.channel)
+                    }
+
+            let links =
+                response
+                |> toText
+
+            return links
+        }
+
+        ``create-link`` = ctx.Authorize <| fun (payload) -> async {
+            let! authToken = getToken ctx protector endpoint
+            let! response = httpAsync {
+                    POST (sprintf "%s/links" endpoint)
+                    Authorization (sprintf "Bearer %s" authToken)
+                    body
+                    json (Json.serialize payload)
+                }
+
+            return response.statusCode
+        }
+
+        ``add-tags`` = ctx.Authorize <| fun (payload) -> async {
+            let! authToken = getToken ctx protector endpoint
+            let! response = httpAsync {
+                                POST (sprintf "%s/links/%s/tags" endpoint payload.linkId)
+                                Authorization (sprintf "Bearer %s" authToken)
+                                body
+                                json (Json.serialize payload)
+                            }
+            return response.statusCode
+        }
+    }
+
+type ChannelService (ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfiguration, dataProvider: IDataProtectionProvider) =
+    inherit RemoteHandler<Client.Services.ChannelService>()
+
+    let endpoint, protector = getCommons config dataProvider
+
+    override this.Handler = {
+        ``get-channels`` = fun () -> async {
+            return httpAsync {
+                        GET (sprintf "%s/channels" endpoint)
+                    }
+                    |> Async.RunSynchronously
+                    |> toText
+        }
+
+        ``create-channel`` = ctx.Authorize <| fun (payload) -> async {
+            let! authToken = getToken ctx protector endpoint
+            return httpAsync {
+                        POST (sprintf "%s/channels" endpoint)
+                        Authorization (sprintf "Bearer %s" authToken)
+                        body
+                        json (Json.serialize payload)
+                    }
+                    |> Async.RunSynchronously
+                    |> fun x -> x.statusCode
         }
     }

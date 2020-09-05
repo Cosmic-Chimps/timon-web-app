@@ -1,68 +1,111 @@
 module TimonWebApp.Client.Pages.Home
 
-open System
-open System.Collections.Generic
 open Elmish
 open Bolero
-open Bolero.Html
 open Microsoft.JSInterop
-open TimonWebApp.Client
-open TimonWebApp.Client.Common
+open TimonWebApp.Client.Pages.Components
+open TimonWebApp.Client.Pages.Components.LinkViewList
 open TimonWebApp.Client.Services
 
+
 type Model = {
-    Endpoint: string
-    Links: LinkView array
+    addLinkBoxModel: AddLinkBox.Model
+    channelMenuModel: ChannelMenu.Model
+    channelMenuFormModel: ChannelMenuForm.Model
+    linkViewListModel: LinkViewList.Model
+    channel: string
+
 }
 with
     static member Default = {
-        Endpoint = ""
-        Links = Array.empty
+        linkViewListModel = LinkViewList.Model.Default
+        addLinkBoxModel = AddLinkBox.Model.Default
+        channelMenuModel = ChannelMenu.Model.Default
+        channelMenuFormModel = ChannelMenuForm.Model.Default
+        channel = ""
     }
-    
+
 type Message =
     | LinksLoaded of LinkView array
-    | OnUpperResult of string
-    | LoadLinks
+    | ChannelsLoaded of ChannelView array
+    | LoadLinks of bool * string
+    | LoadChannels
+    | AddLinkBoxMsg of AddLinkBox.Message
+    | ChannelMenuMsg of ChannelMenu.Message
+    | ChannelMenuFormMsg of ChannelMenuForm.Message
+    | LinkViewItemMsg of LinkViewList.Message
+
+let init (_: IJSRuntime) (channel: string) =
+    { Model.Default with channel = channel }, Cmd.ofMsg (LoadLinks (true, channel))
 
 
+let update (_: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
+    match message, model with
+    | LinksLoaded links, _ ->
+        let linkViewFormList = links
+                                |> Seq.map( fun lv -> {
+                                                view = lv
+                                                isTagFormOpen = false
+                                                errorValidateForm = None
+                                                tagForm = { tags = "" }
+                                            })
+                                |> Seq.toArray
+        let linkViewListModel = { model.linkViewListModel with links = linkViewFormList }
+        { model with linkViewListModel = linkViewListModel }, Cmd.none
+    | ChannelsLoaded channels, _ ->
+        let channelMenuModel = { model.channelMenuModel with channels = channels }
+        { model with channelMenuModel = channelMenuModel }, Cmd.none
+    | LoadLinks (loadChannels, channel), _ ->
+        let queryParams = {
+            channel = channel
+        }
+        let linksCmd = Cmd.ofAsync getLinks (timonService, queryParams) LinksLoaded raise
 
-let init (jsRuntime: IJSRuntime) =
-    Model.Default, Cmd.none
+        let batchCmds = [ linksCmd ] @ match loadChannels with
+                                        | true -> [Cmd.ofMsg LoadChannels]
+                                        | false -> [Cmd.none]
 
-let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
-    jsRuntime.InvokeAsync("console.log", "home.inner.update") |> ignore
-    jsRuntime.InvokeAsync("console.log", message) |> ignore
-    
-    match message with
-    | OnUpperResult links ->
-        model, Cmd.none
-    | LinksLoaded links ->
-        { model with Links = links }, Cmd.none
-    | LoadLinks ->
-//        let cmd = Cmd.ofAsync remote.links () LinksLoaded raise
-//        let cmd = Cmd.ofFunc getLinks (model.Endpoint) LinksLoaded raise
-        let cmd = Cmd.ofAsync getLinks timonService LinksLoaded raise
+        { model with channel = channel }, Cmd.batch batchCmds
+    | LoadChannels, _ ->
+        let cmd = Cmd.ofAsync getChannels timonService ChannelsLoaded raise
         model, cmd
-//        model, Cmd.ofAsync asyncUpper "hola" OnUpperResult raise
-    | _ -> failwith "" 
-    
+
+    | AddLinkBoxMsg (AddLinkBox.Message.NotifyLinkAdded), _ ->
+        model, Cmd.ofMsg (LoadLinks (false, model.channel))
+    | AddLinkBoxMsg msg, _ ->
+        let m, cmd = AddLinkBox.update timonService msg model.addLinkBoxModel
+        { model with addLinkBoxModel = m }, Cmd.map AddLinkBoxMsg cmd
+
+    | ChannelMenuFormMsg (ChannelMenuForm.Message.NotifyChannelAdded), _ ->
+        model, Cmd.ofMsg LoadChannels
+    | ChannelMenuFormMsg msg, _ ->
+        let m, cmd = ChannelMenuForm.update timonService msg model.channelMenuFormModel
+        { model with channelMenuFormModel = m }, Cmd.map ChannelMenuFormMsg cmd
+
+    | LinkViewItemMsg (LinkViewList.Message.NotifyTagsAdded), _ ->
+        model, Cmd.ofMsg (LoadLinks (false, model.channel))
+    | LinkViewItemMsg msg, _ ->
+        let m, cmd = LinkViewList.update timonService msg model.linkViewListModel
+        { model with linkViewListModel = m }, Cmd.map LinkViewItemMsg cmd
+
+    | ChannelMenuMsg (ChannelMenu.Message.LoadLinks channel), _ ->
+        model, Cmd.ofMsg (LoadLinks (false, channel))
+    | ChannelMenuMsg _, _ ->
+        model, Cmd.none
+
+
 type HomeTemplate = Template<"wwwroot/home.html">
 
-let viewLinkItems (links : IReadOnlyList<LinkView> ) dispatcher =
-    forEach links (fun l ->
-        HomeTemplate.LinkItem()
-            .Url(l.Link.Url)
-            .Title(l.Link.Title)
-            .DomainName(l.Link.DomainName)
-            .Date(l.Data.DateCreated.ToString())
-            .ShortDescription(l.Link.ShortDescription)
-            .ChannelName(l.Channel.Name)
-            .SharedBy(l.User.Email)
-            .Elt())
+let view authState model dispatch =
+    let items = LinkViewList.view authState model.linkViewListModel (LinkViewItemMsg >> dispatch)
+    let channels = ChannelMenu.view authState (model.channelMenuModel) (ChannelMenuMsg >> dispatch)
+    let channelForm = ChannelMenuForm.view authState (model.channelMenuFormModel) (ChannelMenuFormMsg >> dispatch)
+    let addLinkBoxHole = AddLinkBox.view authState (model.addLinkBoxModel) (AddLinkBoxMsg >> dispatch)
 
-let view model dispatch =
-    let items = viewLinkItems model.Links dispatch
     HomeTemplate()
-        .LinkList(items)
+        .LinkListHole(items)
+        .ChannelForm(channelForm)
+        .ChannelListHole(channels)
+        .AddLinkBoxHole(addLinkBoxHole)
+        .ChannelName(model.channel)
         .Elt()

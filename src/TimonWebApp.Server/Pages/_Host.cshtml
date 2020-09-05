@@ -8,9 +8,11 @@
     <meta charset="UTF-8">
     <title>Suri</title>
     <base href="/">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css">
-    <link rel="stylesheet" href="//cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css">
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css" integrity="sha512-ADrqa2PY1TZtb/MoLZIZu/Z/LlPaWQeDMBV73EMwjGam43/JJ5fqW38Rq8LJOVGCDfrJeOMS3Q/wRUVzW5DkjQ==" crossorigin="anonymous" />
+    @* <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulmaswatch/0.8.1/slate/bulmaswatch.min.css" integrity="sha512-Dv+naixkO3O4RjnNj1NiJEyPVoD8+JVlKFRtZamMIMKEcMIaYP0nqojvC1HutVjqjI3w2JGtgih+L5sCByUUNg==" crossorigin="anonymous" /> *@
+    <link rel="stylesheet" href="https://unpkg.com/bulmaswatch/yeti/bulmaswatch.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/5.5.55/css/materialdesignicons.min.css" integrity="sha512-fwJwcnaCDZRE9ZXt3Gevw/0WLt8A4tH+5hb1v5ps08P12o4S4BoV0tqrAa71uyclLRQvg6YMKw2RoeqTqhQBhA==" crossorigin="anonymous" />
+    @* <link rel="stylesheet" href="css/index.css"> *@
   </head>
   <body>
   <div id="main">@(await Html.RenderComponentAsync<TimonWebApp.Client.Main.MyApp>(BoleroHostConfig))</div>
@@ -18,8 +20,8 @@
   <script>
           window.generalFunctions = {
               onkeyUp: function (event) {
-                  if (event.key == "Escape") document.getElementById("cancelButton").click();
-                  else if (event.key == "Enter") document.getElementById("confirmButton").click();
+                  if (event.key === "Escape") document.getElementById("cancelButton").click();
+                  else if (event.key === "Enter") document.getElementById("confirmButton").click();
               },
               registerForOnKeyUp: function () {
                   document.addEventListener("keyup", this.onkeyUp)
@@ -27,30 +29,8 @@
               removeOnKeyUp: function () {
                   document.removeEventListener("keyup", this.onkeyUp);
               }
-  
+
           };
-          function setCookie(name, value, days) {
-              var expires = "";
-              if (days) {
-                  var date = new Date();
-                  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                  expires = "; expires=" + date.toUTCString();
-              }
-              document.cookie = name + "=" + (value || "") + expires + "; samesite=lax; secure; path=/";
-          }
-          function getCookie(name) {
-              var nameEQ = name + "=";
-              var ca = document.cookie.split(';');
-              for (var i = 0; i < ca.length; i++) {
-                  var c = ca[i];
-                  while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-                  if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-              }
-              return null;
-          }
-          function eraseCookie(name) {
-              document.cookie = name + '=; Max-Age=-99999999;';
-          }
       </script>
   </body>
 </html>

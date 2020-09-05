@@ -12,6 +12,11 @@
         <Compile Include="Validation.fs" />
         <Compile Include="Services\Services.fs" />
         <Compile Include="Pages\Controls.fs" />
+        <Compile Include="Pages\Components\AddLinkBox.fs" />
+        <Compile Include="Pages\Components\ChannelMenu.fs" />
+        <Compile Include="Pages\Components\ChannelMenuForm.fs" />
+        <Compile Include="Pages\Components\LinkViewList.fs" />
+        <Compile Include="Pages\SignUp.fs" />
         <Compile Include="Pages\Login.fs" />
         <Compile Include="Pages\Home.fs" />
         <Compile Include="Main.fs" />

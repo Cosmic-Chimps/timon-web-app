@@ -1,0 +1,54 @@
+<template id="LinkItem">
+    <div class="box">
+        <article class="media">
+            <figure class="media-left">
+                <p class="image is-64x64">
+                    <img src="https://bulma.io/images/placeholders/128x128.png" alt="">
+                </p>
+            </figure>
+            <div class="media-content">
+                <div class="content">
+                    <p>
+                        <strong><a href="${Url}" target="_blank">${Title}</a></strong>
+                        <br/>
+                        <small><strong>via:</strong> ${Via}</small> <small><strong>domain name</strong>: ${DomainName}</small> <small><strong>shared by:</strong> ${SharedBy}</small> <small><strong>shared at:</strong> ${Date}</small>
+                    </p>
+                    <p>
+                        ${ShortDescription}
+                    </p>
+                </div>
+                <nav class="level is-mobile">
+                    <div class="level-left">
+                        ${LinkTags}
+                    </div>
+                </nav>
+                <nav class="level is-mobile">
+                    <div class="container">
+                        ${TagForm}
+                    </div>
+                </nav>
+                <nav class="level is-mobile">
+                    <div class="level-left">
+                        <a class="level-item">
+                            <span>${ChannelName}</span>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </article>
+    </div>
+</template>
+
+<template id="AddChannelForm">
+    <p class="menu-label">
+        Channels ${Icon}
+    </p>
+    <div class="mb-4">
+        ${ChannelInput}
+    </div>
+</template>
+
+<template id="ChannelItem">
+<!--    <li><button class="button is-white" onclick="${LoadLinks}">#${Name}</button></li>-->
+    <li><a onclick="${LoadLinks}">#${Name}</a></li>
+</template>

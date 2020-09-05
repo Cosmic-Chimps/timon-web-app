@@ -1,6 +1,8 @@
 namespace TimonWebApp.Server
 
 open System
+open System.Text.Json
+open System.Text.Json.Serialization
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -20,7 +22,7 @@ type Startup() =
     member this.ConfigureServices(services: IServiceCollection) =
         services.AddMvc().AddRazorRuntimeCompilation() |> ignore
         services.AddServerSideBlazor() |> ignore
-        services.AddDataProtection() |> ignore;
+        services.AddDataProtection() |> ignore
         services
             .AddAuthorization()
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -28,11 +30,17 @@ type Startup() =
                 .Services
             .AddRemoting<AuthService>()
             .AddRemoting<LinkService>()
+            .AddRemoting<ChannelService>()
             .AddBoleroHost()
 #if DEBUG
             .AddHotReload(templateDir = __SOURCE_DIRECTORY__ + "/../TimonWebApp.Client")
 #endif
         |> ignore
+
+//        let serializerOptions = JsonSerializerOptions()
+//        serializerOptions.PropertyNamingPolicy <- JsonNamingPolicy.CamelCase
+//
+//        do serializerOptions.Converters.Add(JsonFSharpConverter())
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
@@ -63,7 +71,7 @@ module Program =
                                        .AddJsonFile(sprintf "appsettings.%s.json" environment', true)
                                        .AddEnvironmentVariables()
                                        .Build()
-                                         
+
         WebHost
             .CreateDefaultBuilder(args)
             .UseStaticWebAssets()

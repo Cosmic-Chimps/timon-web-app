@@ -1,8 +1,8 @@
 module TimonWebApp.Server.Constants
 
-let [<Literal>] Key = "askdfjaklfj9320932)(()0392093af#@$#@@"
+let [<Literal>] providerKey = "askdfjaklfj9320932)(()0392093af#@$#@@"
 
-let [<Literal>] loginResponseJson = """
+let [<Literal>] tokenResponseJson = """
 {
   "access_token": "string",
   "expires_in": 3600,

@@ -266,7 +266,8 @@ and Validator<'E>(all) =
         x.IsValid<'T, string> ValidateRegexes.mail.IsMatch error input
 
     member x.IsUrl (error: 'E) input =
-        x.IsValid<'T, string> ValidateRegexes.url.IsMatch error input
+//        x.IsValid<'T, string> ValidateRegexes.url.IsMatch error input
+        x.IsValid<'T, string> (fun url -> Uri.IsWellFormedUriString(url, UriKind.RelativeOrAbsolute)) error input
 
     member x.Match (regex: Regex) (error: 'E) input =
         x.IsValid<'T, string> (regex.IsMatch) error input
@@ -278,7 +279,7 @@ and Validator<'E>(all) =
 
     #else
 
-    member x.IsDegist error input =
+    member x.IsDigit error input =
         x.IsValid<'T, string> (String.forall(Char.IsDigit)) error input
 
     #endif

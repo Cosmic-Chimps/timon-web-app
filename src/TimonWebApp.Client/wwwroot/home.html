@@ -1,49 +1,18 @@
-<section class="hero is-primary">
-    <div class="hero-body">
-        <div class="columns">
-            <div class="column is-12">
-                <div class="container content">
-                    <i class="is-large fab fa-discord"></i>
-                    <i class="is-large fas fa-code"></i>
-                    <h1 class="title">Suri <em>All</em> The Links!</h1>
-                    <h3 class="subtitle">
-                        Collection of link goodies for next-level
-                    </h3>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 <section class="section">
     <div class="container">
         <div class="columns">
             <div class="column is-3">
                 <aside class="is-medium menu">
-                    <p class="menu-label">
-                        Channels
-                    </p>
+                    ${ChannelForm}
                     <ul class="menu-list">
-                        <li><span class="tag is-white is-medium">#devops</span></li>
-                        <li><span class="tag is-white is-medium">#timon</span></li>
-                        <li><span class="tag is-white is-medium">#kubernets</span></li>
-                        <li><span class="tag is-white is-medium">#visa</span></li>
+                        ${ChannelListHole}
                     </ul>
                 </aside>
             </div>
             <div class="column is-9">
-                <div class="content is-medium">
-                            <p class="control has-icons-left has-icons-right">
-                                <input class="input" type="text" placeholder="Add new link">
-                                <span class="icon is-small is-left">
-                                  <i class="mdi mdi-link"></i>
-                                </span>
-                                <span class="icon is-small is-right">
-                                  <i class="mdi mdi-plus"></i>
-                                </span>
-                            </p>
-                    </div>
-                    <h3 class="title is-3">Recent</h3>
-                    ${LinkList}
+                ${AddLinkBoxHole}
+                <h3 class="title is-3">${ChannelName}</h3>
+                ${LinkListHole}
             </div>
         </div>
     </div>
@@ -178,63 +147,22 @@
     </div>
 
 </footer>
-<script src='https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.js'></script>
-<script src='https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/1.9.1/js/OverlayScrollbars.min.js'></script>
+<!--<script src='https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.js'></script>-->
+<!--<script src='https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/1.9.1/js/OverlayScrollbars.min.js'></script>-->
 
 <script>
-    window.addEventListener('resize', () => {
-        const divs = document.querySelectorAll(".menu-list");
-        if (window.innerWidth < 768) {
-            divs.forEach(div => div.classList.add("tags"));
-        } else {
-            divs.forEach(div => div.classList.remove("tags"));
-        }
-    });
+    // window.addEventListener('resize', () => {
+    //     const divs = document.querySelectorAll(".menu-list");
+    //     if (window.innerWidth < 768) {
+    //         divs.forEach(div => div.classList.add("tags"));
+    //     } else {
+    //         divs.forEach(div => div.classList.remove("tags"));
+    //     }
+    // });
 
-    document.addEventListener("DOMContentLoaded", function () {
-        //The first argument are the elements to which the plugin shall be initialized
-        //The second argument has to be at least a empty object or a object with your desired options
-        OverlayScrollbars(document.querySelectorAll("body"), {});
-    });
-
+    // document.addEventListener("DOMContentLoaded", function () {
+    //     //The first argument are the elements to which the plugin shall be initialized
+    //     //The second argument has to be at least a empty object or a object with your desired options
+    //     OverlayScrollbars(document.querySelectorAll("body"), {});
+    // });
 </script>
-
-<template id="LinkItem">
-    <div class="box">
-        <article class="media">
-            <figure class="media-left">
-                <p class="image is-64x64">
-                    <img src="https://bulma.io/images/placeholders/128x128.png">
-                </p>
-            </figure>
-            <div class="media-content">
-                <div class="content">
-                    <p>
-                        <strong><a href="${Url}" target="_blank">${Title}</a></strong>
-                        <br/>
-                        <small>via: ${DomainName}</small> <small>shared by: ${SharedBy}</small> <small>shared at: ${Date}</small>
-                        <br>
-                        ${ShortDescription}
-                    </p>
-                </div>
-                <nav class="level is-mobile">
-                    <div class="level-left">
-                        <a class="level-item">
-                            <span>Abc</span>
-                        </a>
-                        <a class="level-item">
-                            <span>Def</span>
-                        </a>
-                    </div>
-                </nav>
-                <nav class="level is-mobile">
-                    <div class="level-left">
-                        <a class="level-item">
-                            <span>${ChannelName}</span>
-                        </a>
-                    </div>
-                </nav>
-            </div>
-        </article>
-    </div>
-</template>

@@ -1,7 +1,6 @@
 module TimonWebApp.Client.Main
 
 open System
-open System.Text.Json
 open Elmish
 open Bolero
 open Bolero.Html
@@ -16,27 +15,22 @@ open TimonWebApp.Client.Common
 
 /// Routing endpoints definition.
 type Page =
-    | Start
-    | [<EndPoint "/">] Home of PageModel<Home.Model>
-    | [<EndPoint "/login">] Login of PageModel<Login.Model>
+    | [<EndPoint "/log-in">] Login of PageModel<Login.Model>
+    | [<EndPoint "/sign-up">] SignUp of PageModel<SignUp.Model>
+    | [<EndPoint "/{channelName}">] Home of channelName: string * model: PageModel<Home.Model>
 
 /// The Elmish application's update messages.
 type Message =
     | SetPage of Page
     | HomeMsg of Home.Message
     | LoginMsg of Login.Message
+    | SignUpMsg of SignUp.Message
     | CommonMessage of Common.Message
     | Rendered
-//    | TokenRead of Authentication
-//    | TokenSaved of Authentication
-//    | TokenSet
-//    | TokenNotFound
     | SignOutRequested
     | SignedOut
-//    | ConfigurationRead of ConfigurationState
-    | ConfigurationNotFound
     | RemoveBuffer
-    | RecvSignedInAs of option<string>
+    | RecvSignedInAs of string option
     | Error of exn
 
 /// The Elmish application's model.
@@ -49,7 +43,7 @@ type Model =
       BufferedCommand: Cmd<Message> }
 
 let init =
-    { Page = Start
+    { Page = Home("", { Model = Home.Model.Default })
       Error = None
       SignedInAs = None
       SignInFailed = false
@@ -70,10 +64,13 @@ let initPage init (model: Model) msg page =
 let initLogin (jsRunTime: IJSRuntime) model =
     initPage (Login.init jsRunTime) model LoginMsg Login
 
-let initHome (jsRunTime: IJSRuntime) model =
-    initPage (Home.init jsRunTime) model HomeMsg Home
+let initHome (jsRunTime: IJSRuntime) channel model =
+    initPage (Home.init jsRunTime channel) model HomeMsg (fun pageModel -> Home(channel, pageModel))
 
-let signOut (jsRuntime : IJSRuntime) (timonService: TimonService)  =
+let initSignUp (jsRunTime: IJSRuntime) model =
+    initPage (SignUp.init jsRunTime) model SignUpMsg SignUp
+
+let signOut (_ : IJSRuntime) (timonService: TimonService)  =
     let doWork () =
         async{
             do! timonService.AuthService.``sign-out``()
@@ -82,83 +79,123 @@ let signOut (jsRuntime : IJSRuntime) (timonService: TimonService)  =
     Cmd.ofAsync doWork () id raise
 
 let update (jsRuntime: IJSRuntime) (timonService: TimonService) message (model: Model) =
-    jsRuntime.InvokeAsync("console.log", message.ToString()) |> ignore
-    
+    printfn "MainUpdate %s" (message.ToString())
+
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel
         { model with
               Page = pageFn ({ Model = subModel }) },
         Cmd.map msgFn cmd
 
-    let genericUpdateWithCommon update subModel msg msgFn pageFn =
-        let subModel, cmd, (commonCommand: Cmd<Common.Message>) = update msg (subModel, model.State)
-        if commonCommand |> List.isEmpty then
-            { model with
-                  Page = pageFn ({ Model = subModel }) },
-            Cmd.map msgFn cmd
-        else
-            let m =
-                { model with
-                      Page = pageFn ({ Model = subModel }) }
-
-            m, Cmd.map CommonMessage commonCommand
+//    let genericUpdateWithCommon update subModel msg msgFn pageFn =
+//        let subModel, cmd, (commonCommand: Cmd<Common.Message>) = update msg (subModel, model.State)
+//        if commonCommand |> List.isEmpty then
+//            { model with
+//                  Page = pageFn ({ Model = subModel }) },
+//            Cmd.map msgFn cmd
+//        else
+//            let m =
+//                { model with
+//                      Page = pageFn ({ Model = subModel }) }
+//
+//            m, Cmd.map CommonMessage commonCommand
 
     match message, model.Page with
     | RemoveBuffer, _ -> { model with BufferedCommand = Cmd.none}, Cmd.none
-    
+
     | Rendered, _ ->
         let cmdGetUserName = Cmd.ofAuthorized
                                 timonService.AuthService.``get-user-name`` ()
                                 RecvSignedInAs
                                 Error
-                                
-        let cmdLoadHome = Cmd.map HomeMsg (Cmd.ofMsg Home.Message.LoadLinks)
-        let cmd = Cmd.batch[cmdGetUserName; cmdLoadHome]
-        model, cmd
-            
+        model, cmdGetUserName
 
-//    | RecvSignedInAs, _ ->
-//        model, Cmd.ofMsg Home.Message.LoadLinks
-    
+    | RecvSignedInAs option, _ ->
+//        let cmdSetPage =  Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, "")))
+        let cmdSetPage =  Cmd.none
+        match option with
+        | Some _ ->
+            let state = { model.State with Authentication = AuthState.Success }
+            let m = { model with SignedInAs = option; State = state}
+
+            match model.Page with
+            | Home _ -> m, Cmd.none
+            | _ -> m, cmdSetPage
+
+        | None _ -> model, cmdSetPage
+
     | SignOutRequested, _ ->
         model, signOut jsRuntime timonService
-    
+
     | SignedOut, _ ->
         let state = { model.State with Authentication = AuthState.Failed }
-        {model with State = state }, Cmd.ofMsg (SetPage (Home(Router.noModel)))
+        let cmdSetPage =  Cmd.ofMsg (SetPage (Home("", Router.noModel)))
+        {model with State = state }, cmdSetPage
 
-    | HomeMsg msg, Home (homePageModel) ->
-        genericUpdate (Home.update jsRuntime timonService) (homePageModel.Model) msg HomeMsg Home
-        
+    | HomeMsg msg, Home (channel, homePageModel) ->
+        genericUpdate (Home.update jsRuntime timonService) (homePageModel.Model) msg HomeMsg ( fun pm -> Home(channel, pm) )
+
     | LoginMsg (Login.Message.LoginSuccess authentication), _ ->
         match authentication with
         | Some _ ->
             let state = { model.State with Authentication = AuthState.Success }
-            { model with SignedInAs = authentication; State = state}, Cmd.ofMsg (SetPage (Home (Router.noModel)))
+            let cmdSetPage = Cmd.ofMsg (SetPage (Home ("", Router.noModel)))
+            { model with SignedInAs = authentication; State = state}, cmdSetPage
         | None _ -> model, Cmd.none
-    
+
     | LoginMsg msg, Login loginModel ->
         let m, cmd =
             Login.update timonService msg (loginModel.Model, model.State)
         { model with Page = Login({ Model = m }) }, Cmd.map LoginMsg cmd
-    
+
+    | SignUpMsg (SignUp.Message.SignUpSuccess authentication), _ ->
+        match authentication with
+        | Some _ ->
+            let state = { model.State with Authentication = AuthState.Success }
+            let cmdSetPage = Cmd.ofMsg (SetPage (Home ("", Router.noModel)))
+            { model with SignedInAs = authentication; State = state}, cmdSetPage
+        | None _ -> model, Cmd.none
+
+    | SignUpMsg msg, SignUp signUpModel ->
+        let m, cmd = SignUp.update timonService msg signUpModel.Model
+        { model with Page  = SignUp({Model = m})}, Cmd.map SignUpMsg cmd
+
     | SetPage (Page.Login _), _ -> initLogin jsRuntime model
 
-    | SetPage (Page.Home _), _ ->
-        initHome jsRuntime model
-    
-    | SetPage (Start), _
+    | SetPage (Page.SignUp _), _ -> initSignUp jsRuntime model
+
+//    | SetPage page -> { model with page = page }
+
+    | SetPage (Page.Home (channel, m)), _ ->
+        let loadChannels = channel = ""
+        { model with Page = Home(channel, { Model = m.Model })},
+            Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, channel)))
+//         initHome jsRuntime channel model
+//        match model.Page with
+//        | Home page ->
+//            { model with Page = page }, Cmd.none
+////            printfn "hooooooooooola loaaaaaad1 %s" channel
+////            printfn "hooooooooooola loaaaaaad2 %s" m.Model.channel
+////            printfn "hooooooooooola loaaaaaad3 %s" c
+////            printfn "hooooooooooola loaaaaaad4 %s" mm.Model.channel
+////            let loadChannels = channel = ""
+////            model, Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (loadChannels, channel)))
+//        | _ ->
+//            printfn "innnnit %s" channel
+//            initHome jsRuntime channel model
+
     | _ -> model, Cmd.none
 
-let defaultPageModel (jsRuntime: IJSRuntime) =
-    function
-    | Login model -> Router.definePageModel model (Login.init jsRuntime |> fst)
-    | Home (model) ->
-        Router.definePageModel model (Home.init jsRuntime |> fst)
-    | Start -> ()
+
+let defaultModel (jsRuntime: IJSRuntime) = function
+    | Login model -> Router.definePageModel model Login.Model.Default
+    | Home (channel, model) ->
+        printfn "defaultModel----------------------------------"
+        Router.definePageModel model { Home.Model.Default with channel = channel }
+    | SignUp model -> Router.definePageModel model SignUp.Model.Default
 
 let buildRouter (jsRuntime: IJSRuntime) =
-    Router.inferWithModel SetPage (fun m -> m.Page) (defaultPageModel jsRuntime)
+    Router.inferWithModel SetPage (fun m -> m.Page) (defaultModel jsRuntime)
 
 type NavbarTemplate = Template<"wwwroot/navbar.html">
 
@@ -172,12 +209,13 @@ type NavbarEndItemsDisplay() =
         | AuthState.Failed ->
             div [ attr.``class`` Bulma.buttons ] [
                 a [ attr.``class``
-                    <| String.concat " " [ Bulma.button; Bulma.``is-primary`` ] ] [
+                    <| String.concat " " [ Bulma.button; Bulma.``is-primary`` ]
+                    attr.href "/sign-up" ] [
                     text "Sign up"
                 ]
                 a [ attr.``class``
                     <| String.concat " " [ Bulma.button; Bulma.``is-light`` ]
-                    attr.href "/login" ] [
+                    attr.href "/log-in" ] [
                     text "Log in"
                 ]
             ]
@@ -205,32 +243,30 @@ type NavbarEndItemsDisplay() =
                     ]
                   ] ]
 
-let view (js: IJSRuntime) (model: Model) dispatch =
+let view (js: IJSRuntime) (mainModel: Model) dispatch =
     let content =
-        cond model.Page
+        cond mainModel.Page
         <| function
-        | Login (model) -> Login.view model.Model (LoginMsg >> dispatch)
-        | Home (model) -> Home.view model.Model (LoginMsg >> dispatch)
-        | Start -> h2 [] []
+        | Login (model) -> Login.view js model.Model (LoginMsg >> dispatch)
+        | SignUp (model) -> SignUp.view model.Model (SignUpMsg >> dispatch)
+        | Home (_, model) -> Home.view mainModel.State.Authentication model.Model (HomeMsg >> dispatch)
 
     let navbarEndItemsDisplay =
-        ecomp<NavbarEndItemsDisplay, _, _> [] model dispatch
+        ecomp<NavbarEndItemsDisplay, _, _> [] mainModel dispatch
 
     NavbarTemplate().navbarEndItems(navbarEndItemsDisplay).content(content).Elt()
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
-    
     static member  val Dispatchers :  System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit>
-        = new System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit),unit>() with get, set
+        = System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit),unit>() with get, set
     interface IDisposable with
           member this.Dispose() =
             MyApp.Dispatchers.TryRemove(this.Dispatch) |> ignore
-    
+
     override this.OnAfterRenderAsync(firstRender) =
         let res = base.OnAfterRenderAsync(firstRender) |> Async.AwaitTask
         async{
-
             do! res
             if firstRender then
                MyApp.Dispatchers.TryAdd(this.Dispatch,()) |> ignore
@@ -239,12 +275,13 @@ type MyApp() =
          }|> Async.StartImmediateAsTask :> _
 
     override this.Program =
-        //        Program.mkSimple (fun _ -> initModel) update view
         let authService = this.Remote<AuthService>()
         let linkService = this.Remote<LinkService>()
+        let channelService = this.Remote<ChannelService>()
         let timonService = {
             LinkService = linkService
             AuthService = authService
+            ChannelService = channelService
         }
         let router = buildRouter (this.JSRuntime)
         let update = update (this.JSRuntime) timonService

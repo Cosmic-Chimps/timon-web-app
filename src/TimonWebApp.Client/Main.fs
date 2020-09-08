@@ -167,22 +167,8 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) message (model: 
 //    | SetPage page -> { model with page = page }
 
     | SetPage (Page.Home (channel, m)), _ ->
-        let loadChannels = channel = ""
         { model with Page = Home(channel, { Model = m.Model })},
-            Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, channel)))
-//         initHome jsRuntime channel model
-//        match model.Page with
-//        | Home page ->
-//            { model with Page = page }, Cmd.none
-////            printfn "hooooooooooola loaaaaaad1 %s" channel
-////            printfn "hooooooooooola loaaaaaad2 %s" m.Model.channel
-////            printfn "hooooooooooola loaaaaaad3 %s" c
-////            printfn "hooooooooooola loaaaaaad4 %s" mm.Model.channel
-////            let loadChannels = channel = ""
-////            model, Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (loadChannels, channel)))
-//        | _ ->
-//            printfn "innnnit %s" channel
-//            initHome jsRuntime channel model
+            Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, channel, Guid.Empty)))
 
     | _ -> model, Cmd.none
 
@@ -190,7 +176,6 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) message (model: 
 let defaultModel (jsRuntime: IJSRuntime) = function
     | Login model -> Router.definePageModel model Login.Model.Default
     | Home (channel, model) ->
-        printfn "defaultModel----------------------------------"
         Router.definePageModel model { Home.Model.Default with channel = channel }
     | SignUp model -> Router.definePageModel model SignUp.Model.Default
 

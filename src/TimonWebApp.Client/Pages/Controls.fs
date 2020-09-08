@@ -30,7 +30,7 @@ let formFieldItem  validatedForm onFocus focusMessage fieldType name value callb
         ]
     ]
 
-let inputAddLink item onFocus inputName inputValue inputCallback buttonAction =
+let inputAddLink item onFocus inputName inputValue inputCallback buttonAction buttonName =
     let error, validClass = errorAndClass inputName onFocus item
     concat [
 //        comp<KeySubscriber> [] []
@@ -71,7 +71,7 @@ let inputAddLink item onFocus inputName inputValue inputCallback buttonAction =
                                       Bulma.``is-info``
                                       Bulma.``is-fullwidth`` ]
                              on.click buttonAction ] [
-                        text "Add"
+                        text buttonName
                     ]
                 ]
             ]

@@ -58,7 +58,7 @@ type AddTagPayload = {
 
 [<JsonFSharpConverter>]
 type GetLinkParams = {
-    channel: string
+    channelId: Guid
 }
 type LinkService =
     {

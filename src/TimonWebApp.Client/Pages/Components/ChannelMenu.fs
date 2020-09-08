@@ -1,5 +1,6 @@
 module TimonWebApp.Client.Pages.Components.ChannelMenu
 
+open System
 open Bolero
 open Elmish
 open TimonWebApp.Client.Common
@@ -17,7 +18,7 @@ with
     }
 
 type Message =
-    | LoadLinks of string
+    | LoadLinks of Guid * string
     | Empty
 
 let update model msg =
@@ -34,7 +35,7 @@ type Component() =
         forEach model.channels (fun l ->
             ComponentsTemplate.ChannelItem()
                 .Name(l.Name)
-                .LoadLinks(fun _ -> (dispatch (LoadLinks l.Name) ))
+                .LoadLinks(fun _ -> (dispatch (LoadLinks (l.Id, l.Name)) ))
                 .Elt()
             )
 

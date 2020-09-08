@@ -1,5 +1,6 @@
 module TimonWebApp.Client.Pages.Components.AddLinkBox
 
+open System
 open System.Net
 open Bolero
 open Elmish
@@ -17,12 +18,16 @@ type Model = {
     errorsValidateUrlForm : Result<UrlForm,Map<string,string list>> option
     urlForm: UrlForm
     authentication: AuthState
+    channelName: string
+    channelId : Guid
 }
 with
     static member Default = {
         urlForm = { url = ""}
         errorsValidateUrlForm = None
         authentication = AuthState.NotTried
+        channelName = ""
+        channelId = Guid.Empty
     }
 type Message =
     | SetFormField of string * string
@@ -67,7 +72,7 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
     | AddLink, _ ->
         let createLinkPayload = {
             url = model.urlForm.url
-            channelId = ""
+            channelId = model.channelId.ToString()
             via = "web"
         }
         let cmdAddLink = Cmd.ofAsync createLink (timonService, createLinkPayload) LinkAdded raise
@@ -84,9 +89,15 @@ type Component() =
             let inputCallback = fun v -> dispatch (SetFormField("url",v ))
             let buttonAction = fun _ -> dispatch ValidateLink
 
-            formFieldItem "Link" model.urlForm.url inputCallback buttonAction
+            let buttonName = match String.IsNullOrEmpty(model.channelName.Trim()) with
+                             | true -> "Add to general"
+                             | _ -> sprintf "Add to %s"  (model.channelName.Trim())
+
+            formFieldItem "Link" model.urlForm.url inputCallback buttonAction buttonName
         | _ -> empty
 
 
 let view authState (model: Model) dispatch =
-    ecomp<Component,_,_> [] { model with authentication = authState} dispatch
+    ecomp<Component,_,_> [] {
+        model with authentication = authState
+    } dispatch

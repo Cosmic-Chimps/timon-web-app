@@ -1,5 +1,6 @@
 module TimonWebApp.Client.Pages.Home
 
+open System
 open Elmish
 open Bolero
 open Microsoft.JSInterop
@@ -14,6 +15,7 @@ type Model = {
     channelMenuFormModel: ChannelMenuForm.Model
     linkViewListModel: LinkViewList.Model
     channel: string
+    channelId: Guid
 
 }
 with
@@ -22,13 +24,14 @@ with
         addLinkBoxModel = AddLinkBox.Model.Default
         channelMenuModel = ChannelMenu.Model.Default
         channelMenuFormModel = ChannelMenuForm.Model.Default
-        channel = ""
+        channel = "general"
+        channelId = Guid.Empty
     }
 
 type Message =
     | LinksLoaded of LinkView array
     | ChannelsLoaded of ChannelView array
-    | LoadLinks of bool * string
+    | LoadLinks of bool * string * Guid
     | LoadChannels
     | AddLinkBoxMsg of AddLinkBox.Message
     | ChannelMenuMsg of ChannelMenu.Message
@@ -36,7 +39,7 @@ type Message =
     | LinkViewItemMsg of LinkViewList.Message
 
 let init (_: IJSRuntime) (channel: string) =
-    { Model.Default with channel = channel }, Cmd.ofMsg (LoadLinks (true, channel))
+    { Model.Default with channel = channel }, Cmd.ofMsg (LoadLinks (true, channel, Guid.Empty))
 
 
 let update (_: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
@@ -51,13 +54,14 @@ let update (_: IJSRuntime) (timonService: TimonService) (message: Message) (mode
                                             })
                                 |> Seq.toArray
         let linkViewListModel = { model.linkViewListModel with links = linkViewFormList }
-        { model with linkViewListModel = linkViewListModel }, Cmd.none
+        let addLinkBoxModel = { model.addLinkBoxModel with channelName = model.channel; channelId = model.channelId }
+        { model with linkViewListModel = linkViewListModel; addLinkBoxModel = addLinkBoxModel }, Cmd.none
     | ChannelsLoaded channels, _ ->
         let channelMenuModel = { model.channelMenuModel with channels = channels }
         { model with channelMenuModel = channelMenuModel }, Cmd.none
-    | LoadLinks (loadChannels, channel), _ ->
+    | LoadLinks (loadChannels, channel, channelId), _ ->
         let queryParams = {
-            channel = channel
+            channelId = channelId
         }
         let linksCmd = Cmd.ofAsync getLinks (timonService, queryParams) LinksLoaded raise
 
@@ -65,13 +69,13 @@ let update (_: IJSRuntime) (timonService: TimonService) (message: Message) (mode
                                         | true -> [Cmd.ofMsg LoadChannels]
                                         | false -> [Cmd.none]
 
-        { model with channel = channel }, Cmd.batch batchCmds
+        { model with channel = channel; channelId = channelId }, Cmd.batch batchCmds
     | LoadChannels, _ ->
         let cmd = Cmd.ofAsync getChannels timonService ChannelsLoaded raise
         model, cmd
 
     | AddLinkBoxMsg (AddLinkBox.Message.NotifyLinkAdded), _ ->
-        model, Cmd.ofMsg (LoadLinks (false, model.channel))
+        model, Cmd.ofMsg (LoadLinks (false, model.channel, model.channelId))
     | AddLinkBoxMsg msg, _ ->
         let m, cmd = AddLinkBox.update timonService msg model.addLinkBoxModel
         { model with addLinkBoxModel = m }, Cmd.map AddLinkBoxMsg cmd
@@ -83,13 +87,13 @@ let update (_: IJSRuntime) (timonService: TimonService) (message: Message) (mode
         { model with channelMenuFormModel = m }, Cmd.map ChannelMenuFormMsg cmd
 
     | LinkViewItemMsg (LinkViewList.Message.NotifyTagsAdded), _ ->
-        model, Cmd.ofMsg (LoadLinks (false, model.channel))
+        model, Cmd.ofMsg (LoadLinks (false, model.channel, model.channelId))
     | LinkViewItemMsg msg, _ ->
         let m, cmd = LinkViewList.update timonService msg model.linkViewListModel
         { model with linkViewListModel = m }, Cmd.map LinkViewItemMsg cmd
 
-    | ChannelMenuMsg (ChannelMenu.Message.LoadLinks channel), _ ->
-        model, Cmd.ofMsg (LoadLinks (false, channel))
+    | ChannelMenuMsg (ChannelMenu.Message.LoadLinks (channelId, channel)), _ ->
+        model, Cmd.ofMsg (LoadLinks (false, channel, channelId))
     | ChannelMenuMsg _, _ ->
         model, Cmd.none
 

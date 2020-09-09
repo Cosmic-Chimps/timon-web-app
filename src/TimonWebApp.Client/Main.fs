@@ -168,7 +168,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) message (model: 
 
     | SetPage (Page.Home (channel, m)), _ ->
         { model with Page = Home(channel, { Model = m.Model })},
-            Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, channel, Guid.Empty)))
+            Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, channel, Guid.Empty, 0)))
 
     | _ -> model, Cmd.none
 

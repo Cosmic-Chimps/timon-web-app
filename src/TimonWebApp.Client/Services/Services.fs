@@ -59,6 +59,7 @@ type AddTagPayload = {
 [<JsonFSharpConverter>]
 type GetLinkParams = {
     channelId: Guid
+    page: int
 }
 type LinkService =
     {
@@ -102,19 +103,19 @@ let signUp (timonService,signUpRequest) =
     }
 
 #if DEBUG
-type LinkViewProvider = JsonProvider<"https://localhost:5010/.meta/get/links">
-type ChannelViewProvider = JsonProvider<"http://localhost:5011/.meta/get/channels">
+type GetLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v3/get/links">
+type ChannelViewProvider = JsonProvider<"http://localhost:5011/.meta/v3/get/channels">
 #else
-type LinkViewProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/links">
-type ChannelViewProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/channels">
+type GetLinksResultProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/v3/get/links">
+type ChannelViewProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/v3/channels">
 #endif
-type LinkView = LinkViewProvider.Root
+type GetLinksResult = GetLinksResultProvider.Root
 type ChannelView = ChannelViewProvider.Root
 
 let getLinks (timonService, queryParams) =
     async {
         let! resp = timonService.LinkService.``get-links`` queryParams
-        return LinkViewProvider.Parse resp
+        return GetLinksResultProvider.Parse resp
     }
 
 let createLink (timonService, payload) =

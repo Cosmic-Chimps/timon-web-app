@@ -1,40 +1,23 @@
-/*html, body {*/
-/*  height: 100%;*/
-/*}*/
-
-/*body {*/
-/*  display: flex;*/
-/*  flex-direction: column;*/
-/*}*/
-
-/*#main {*/
-/*  flex: 1;*/
-/*}*/
-
-/*#main > .columns {*/
-/*  min-height: 100%;*/
-/*}*/
-
-/*.sidebar {*/
-/*  width: 250px;*/
-/*  background: whitesmoke;*/
-/*  min-height: 100%;*/
-/*}*/
-
-/*#counter {*/
-/*  width: 80px;*/
-/*}*/
-
-/*#notification-area {*/
-/*  position: fixed;*/
-/*  bottom: 0;*/
-/*  left: 0;*/
-/*  right: 0;*/
-/*}*/
-
-/*#notification-area > div {*/
-/*  max-width: 600px;*/
-/*  margin-left: auto;*/
-/*  margin-right: auto;*/
-/*  margin-bottom: 5px;*/
-/*}*/
+dl {
+    width: 100%;
+    overflow: hidden;
+    background: #ff0;
+    padding: 0;
+    margin: 0
+}
+dt {
+    float: left;
+    width: 50%;
+    /* adjust the width; make sure the total of both is 100% */
+    background: #cc0;
+    padding: 0;
+    margin: 0
+}
+dd {
+    float: left;
+    width: 50%;
+    /* adjust the width; make sure the total of both is 100% */
+    background: #dd0;
+    padding: 0;
+    margin: 0
+}

@@ -15,10 +15,11 @@ type TagForm = {
 }
 
 type LinkViewValidationForm = {
-    view: LinkView
+    view: GetLinksResultProvider.Link
     isTagFormOpen: bool
     errorValidateForm: Result<TagForm,Map<string,string list>> option
     tagForm: TagForm
+    openMoreInfo: bool
 }
 
 type Model = {
@@ -38,6 +39,10 @@ type Message =
     | AddTag of LinkViewValidationForm
     | TagsAdded of Guid * HttpStatusCode
     | NotifyTagsAdded
+    | ToggleInfoClicked of LinkViewValidationForm
+    | HideInfoClicked of LinkViewValidationForm
+    | LoadLinks of Guid * string
+    | LoadLinksbyTag of string
 
 let validateTagForm (tagForm) =
     let validateTag (validator:Validator<string>) name value =
@@ -89,8 +94,6 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
         let linkViewValidationForm = linkForm.tagForm |> validateTagForced linkForm
         let arrayLinkView = updateLink linkViewValidationForm
 
-
-
         { model with links = arrayLinkView },
         Cmd.ofMsg (AddTag { linkForm with errorValidateForm = linkViewValidationForm.errorValidateForm} )
 
@@ -112,6 +115,16 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
 
         { model with links = links }, Cmd.none
 
+    | ToggleInfoClicked (linkForm), _ ->
+        let linkForm' = { linkForm with openMoreInfo = not linkForm.openMoreInfo }
+        let links = updateLink linkForm'
+
+        { model with links = links }, Cmd.none
+    | HideInfoClicked (linkForm), _ ->
+        let linkForm' = { linkForm with openMoreInfo = false }
+        let links = updateLink linkForm'
+
+        { model with links = links }, Cmd.none
     | AddTag linkForm, _ ->
 
         let hasError = match linkForm.errorValidateForm with
@@ -130,6 +143,10 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
                         TagsAdded
                         raise
             model, cmd
+    | LoadLinks _, _ ->
+        model, Cmd.none
+    | LoadLinksbyTag _, _ ->
+        model, Cmd.none
     | _, _ -> model, Cmd.none
 
 
@@ -161,7 +178,8 @@ type Component()=
                                | "" -> empty
                                | _ -> forEach ((l.view.Link.Tags + l.view.Data.Tags).Split(","))
                                            (fun x ->
-                                                a [ attr.``class`` Bulma.``level-item`` ] [
+                                                a [ attr.``class`` Bulma.``level-item``
+                                                    on.click (fun _ -> dispatch (LoadLinksbyTag (x.Trim()))  ) ] [
                                                     span [ attr.``class`` <| String.concat " " [ Bulma.tag; Bulma.``is-info``] ] [
                                                         text (x.Trim())
                                                     ]
@@ -186,6 +204,11 @@ type Component()=
 //                                            | false -> empty
 //                ]
 
+            let isActiveDropdownClass =
+                match l.openMoreInfo with
+                | true -> Bulma.``is-active``
+                | false -> ""
+
             ComponentsTemplate.LinkItem()
                 .Url(l.view.Link.Url)
                 .Title(l.view.Link.Title)
@@ -197,6 +220,10 @@ type Component()=
                 .Via(l.view.Data.Via)
                 .LinkTags(linkTags)
                 .TagForm(tagForm)
+                .OnMoreInfoClicked(fun _ -> dispatch (ToggleInfoClicked l))
+                .OnMoreInfoBlurred(fun _ -> dispatch (HideInfoClicked l))
+                .ShowDropdownClass(isActiveDropdownClass)
+                .OnChannelClicked(fun _ -> dispatch (LoadLinks (l.view.Channel.Id, l.view.Channel.Name)))
                 .Elt()
         )
 

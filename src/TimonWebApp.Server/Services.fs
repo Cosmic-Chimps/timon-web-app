@@ -177,7 +177,7 @@ type LinkService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfigu
         ``get-links`` = fun (queryParams) -> async {
             let! response =
                     httpAsync {
-                        GET (sprintf "%s/links?channelId=%O" endpoint queryParams.channelId)
+                        GET (sprintf "%s/links?channelId=%O&page=%i" endpoint queryParams.channelId queryParams.page)
                     }
 
             let links =

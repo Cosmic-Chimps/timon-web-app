@@ -10,11 +10,13 @@ open Bolero.Html
 type Model = {
     channels: ChannelView array
     authentication: AuthState
+    activeChannelId: Guid
 }
 with
     static member Default = {
         channels = Array.empty
         authentication = AuthState.NotTried
+        activeChannelId = Guid.Empty
     }
 
 type Message =
@@ -33,9 +35,14 @@ type Component() =
     override this.ShouldRender(oldModel, newModel) = oldModel <> newModel
     override _.View model dispatch =
         forEach model.channels (fun l ->
+            let isActiveClass =
+                match model.activeChannelId = l.Id with
+                | true -> Bulma.``is-active``
+                | false -> ""
             ComponentsTemplate.ChannelItem()
                 .Name(l.Name)
                 .LoadLinks(fun _ -> (dispatch (LoadLinks (l.Id, l.Name)) ))
+                .ActiveClass(isActiveClass)
                 .Elt()
             )
 

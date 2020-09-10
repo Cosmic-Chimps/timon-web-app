@@ -16,11 +16,15 @@
         <Compile Include="Pages\Components\ChannelMenu.fs" />
         <Compile Include="Pages\Components\ChannelMenuForm.fs" />
         <Compile Include="Pages\Components\LinkViewList.fs" />
+        <Compile Include="Pages\Components\RecenTagsMenu.fs" />
+        <Compile Include="Pages\Components\SearchBox.fs" />
+        <Compile Include="Pages\Components\RecentSearchMenu.fs" />
         <Compile Include="Pages\SignUp.fs" />
         <Compile Include="Pages\Login.fs" />
         <Compile Include="Pages\Home.fs" />
         <Compile Include="Main.fs" />
         <Compile Include="Startup.fs" />
+        <PackageReference Include="Blazored.LocalStorage" Version="3.0.0" />
         <PackageReference Include="FSharp.Data" Version="3.3.3" />
         <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
         <PackageReference Include="Bolero" Version="0.*" />

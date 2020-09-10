@@ -14,25 +14,33 @@ type Message =
     | AuthenticationRequested
     | AuthenticationError of exn
 
-let authenticationRequested  = Cmd.ofMsg (AuthenticationRequested)
+let authenticationRequested = Cmd.ofMsg (AuthenticationRequested)
 
 [<JsonFSharpConverter>]
-type Authentication = {
-    User : string;
-    Token : string;
-    TimeStamp : DateTime;
-}
+type Authentication =
+    { User: string
+      Token: string
+      TimeStamp: DateTime }
 
 [<JsonFSharpConverter>]
-type TimonConfiguration = {
-    Endpoint : string
-}
+type TimonConfiguration = { Endpoint: string }
 
-type ConfigurationState = NotInitialized | Success of TimonConfiguration
-type AuthState = NotTried | Failed | Success
-type State = {
-    Authentication : AuthState
-    Configuration: ConfigurationState
-}
+type ConfigurationState =
+    | NotInitialized
+    | Success of TimonConfiguration
+
+type AuthState =
+    | NotTried
+    | Failed
+    | Success
+
+type State =
+    { Authentication: AuthState
+      Configuration: ConfigurationState }
 
 type ComponentsTemplate = Template<"wwwroot/components.html">
+
+type MenuSection =
+    | Channel
+    | Tag
+    | Search

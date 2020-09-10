@@ -1,8 +1,6 @@
 namespace TimonWebApp.Server
 
 open System
-open System.Text.Json
-open System.Text.Json.Serialization
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -12,8 +10,8 @@ open Microsoft.Extensions.DependencyInjection
 open Bolero.Remoting.Server
 open Bolero.Server.RazorHost
 open Bolero.Templating.Server
-open TimonWebApp.Client.Services
 open TimonWebApp.Server.AuthService
+open Blazored.LocalStorage
 
 type Startup() =
 
@@ -23,6 +21,7 @@ type Startup() =
         services.AddMvc().AddRazorRuntimeCompilation() |> ignore
         services.AddServerSideBlazor() |> ignore
         services.AddDataProtection() |> ignore
+        services.AddBlazoredLocalStorage() |> ignore
         services
             .AddAuthorization()
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

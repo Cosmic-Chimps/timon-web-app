@@ -10,21 +10,18 @@ open TimonWebApp.Client.Pages
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 
-type Model = {
-    failureReason : string option
-    isSignedIn : bool
-    currentLogin : LoginRequest
-    validatedLogin : Result<LoginRequest,Map<string,string list>> option
-    focus : string option
-}
-with
-    static member Default = {
-         currentLogin =  { email = "" ; password = "" };
-         validatedLogin =  None;
-         isSignedIn = false;
-         failureReason = None
-         focus = None
-    }
+type Model =
+    { failureReason: string option
+      isSignedIn: bool
+      currentLogin: LoginRequest
+      validatedLogin: Result<LoginRequest, Map<string, string list>> option
+      focus: string option }
+    static member Default =
+        { currentLogin = { email = ""; password = "" }
+          validatedLogin = None
+          isSignedIn = false
+          failureReason = None
+          focus = None }
 
 type Message =
     | DoLogin
@@ -33,73 +30,80 @@ type Message =
     | SignInSuccessful of string
     | LoginError of exn
     | Focused of string
-    | SetFormField of string *string
+    | SetFormField of string * string
 
-let init _ =
-    Model.Default, Cmd.none
+let init _ = Model.Default, Cmd.none
 
-let validateForm (form : LoginRequest) =
-    let cannotBeBlank (validator:Validator<string>) name value =
+let validateForm (form: LoginRequest) =
+    let cannotBeBlank (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank (name + " cannot be blank")
+        |> validator.NotBlank(name + " cannot be blank")
         |> validator.End
 
-    let validEmail (validator:Validator<string>) name value =
+    let validEmail (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank (name + " cannot be blank")
-        |> validator.IsMail (name + " should be an email format")
+        |> validator.NotBlank(name + " cannot be blank")
+        |> validator.IsMail(name + " should be an email format")
         |> validator.End
 
-    all <| fun t -> {
-        email = validEmail t "Email" form.email
-        password =  cannotBeBlank t "Password" form.password
-    }
+    all
+    <| fun t ->
+        { email = validEmail t "Email" form.email
+          password = cannotBeBlank t "Password" form.password }
 
-let update (timonService: TimonService) message (model , _: State) =
+let update (timonService: TimonService) message (model, _: State) =
     let validateForced form =
         let validated = validateForm form
-        {model with currentLogin = form; validatedLogin = Some validated; failureReason = None}
+        { model with
+              currentLogin = form
+              validatedLogin = Some validated
+              failureReason = None }
 
     let validate form =
         match model.validatedLogin with
-        | None  ->
-            {model with currentLogin = form; failureReason = None}
+        | None ->
+            { model with
+                  currentLogin = form
+                  failureReason = None }
         | Some _ -> validateForced form
 
     match message, model with
-    | Focused field, _ -> { model with focus = Some field}, Cmd.none
+    | Focused field, _ -> { model with focus = Some field }, Cmd.none
 
-    | SetFormField("Email",value),_ ->
-        {model.currentLogin with email = value} |> validate, Cmd.none
+    | SetFormField ("Email", value), _ ->
+        { model.currentLogin with
+              email = value }
+        |> validate,
+        Cmd.none
 
-    | SetFormField("Password",value),_ ->
-        {model.currentLogin with password = value} |> validate, Cmd.none
+    | SetFormField ("Password", value), _ ->
+        { model.currentLogin with
+              password = value }
+        |> validate,
+        Cmd.none
 
-    | _ , ({ validatedLogin = Some(Error _) }) -> model , Cmd.none
+    | _, ({ validatedLogin = Some (Error _) }) -> model, Cmd.none
 
-    | DoLogin, _ ->
-        model.currentLogin |> validateForced, Cmd.ofMsg (LoginValidated)
+    | DoLogin, _ -> model.currentLogin |> validateForced, Cmd.ofMsg (LoginValidated)
 
     | LoginValidated, _ ->
-        let loginRequest = {
-            email = model.currentLogin.email
-            password = model.currentLogin.password
-        }
+        let loginRequest =
+            { email = model.currentLogin.email
+              password = model.currentLogin.password }
 
-        model, Cmd.ofAsync
-                logIn (timonService, loginRequest)
-                LoginSuccess
-                LoginError
+        model, Cmd.ofAsync logIn (timonService, loginRequest) LoginSuccess LoginError
 
-    | LoginSuccess _, _ ->
-        model, Cmd.none
+    | LoginSuccess _, _ -> model, Cmd.none
 
-//    | LoginSuccess value, _ ->
+    //    | LoginSuccess value, _ ->
 //        match value with
 //        | Some loginResponse -> { model with IsSignedIn = true}, Cmd.ofMsg(SignInSuccessful loginResponse)
 //        | None -> { model with IsSignedIn = false }, Cmd.none
 
-    | LoginError exn, _ -> { model with failureReason = Some "Verify your email or password" }, Cmd.none
+    | LoginError exn, _ ->
+        { model with
+              failureReason = Some "Verify your email or password" },
+        Cmd.none
 
     | _ -> failwith ""
 
@@ -140,36 +144,40 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                             text "Please enter your email and password"
                         ]
                         match model.failureReason with
-                            | Some(value) ->
-                                div[attr.``class`` <| String.concat " " [Bulma.``is-danger``; Bulma.message]][
-                                    div[attr.``class`` Bulma.``message-header``] [
-                                     text value
-                                    ]
-                                ]
-                            | None -> ()
-
-                        let focused = (fun name -> Action<_>(fun _ -> dispatch (Focused name)))
-                        let formFieldItem = Controls.formFieldItem model.validatedLogin model.focus focused
-                        let pd name = fun v -> dispatch (SetFormField(name,v ))
-
-                        div [] [
-                            concat [
-                                comp<KeySubscriber> [] []
-                                formFieldItem "email" "Email" model.currentLogin.email (pd "Email")
-                                formFieldItem "password" "Password" model.currentLogin.password (pd "Password")
-                                button [ attr.id "confirmButton"
-                                         attr.``class``
-                                         <| String.concat
-                                             " "
-                                                [ Bulma.button
-                                                  Bulma.``is-block``
-                                                  Bulma.``is-primary``
-                                                  Bulma.``is-large``
-                                                  Bulma.``is-fullwidth`` ]
-                                         on.click (fun _ -> dispatch DoLogin) ] [
-                                    text "Log in"
+                        | Some (value) ->
+                            div [ attr.``class``
+                                  <| String.concat " " [ Bulma.``is-danger``; Bulma.message ] ] [
+                                div [ attr.``class`` Bulma.``message-header`` ] [
+                                    text value
                                 ]
                             ]
+                        | None -> ()
+
+                        let focused =
+                            (fun name -> Action<_>(fun _ -> dispatch (Focused name)))
+
+                        let formFieldItem =
+                            Controls.formFieldItem model.validatedLogin model.focus focused
+
+                        let pd name =
+                            fun v -> dispatch (SetFormField(name, v))
+
+                        div [] [
+                            concat [ comp<KeySubscriber> [] []
+                                     formFieldItem "email" "Email" model.currentLogin.email (pd "Email")
+                                     formFieldItem "password" "Password" model.currentLogin.password (pd "Password")
+                                     button [ attr.id "confirmButton"
+                                              attr.``class``
+                                              <| String.concat
+                                                  " "
+                                                     [ Bulma.button
+                                                       Bulma.``is-block``
+                                                       Bulma.``is-primary``
+                                                       Bulma.``is-large``
+                                                       Bulma.``is-fullwidth`` ]
+                                              on.click (fun _ -> dispatch DoLogin) ] [
+                                         text "Log in"
+                                     ] ]
                         ]
                     ]
                     div [ attr.``class`` Bulma.columns ] [
@@ -185,12 +193,6 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                                 text "Forgot password"
                             ]
                         ]
-//                        div [ attr.``class`` Bulma.column ] [
-//                            a [ attr.href ""
-//                                attr.``class`` Bulma.``has-text-grey`` ] [
-//                                text "Need Help?"
-//                            ]
-//                        ]
                     ]
                 ]
             ]

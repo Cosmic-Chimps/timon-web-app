@@ -209,6 +209,41 @@ type LinkService(ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfigu
                             }
             return response.statusCode
         }
+
+        ``get-links-by-tag`` = fun (queryParams) -> async {
+            let! response =
+                    httpAsync {
+                        GET (sprintf "%s/links/by-tag/%s?page=%i" endpoint queryParams.tagName queryParams.page)
+                    }
+
+            let links =
+                response
+                |> toText
+
+            return links
+        }
+
+        ``delete-tag-from-link`` = ctx.Authorize <| fun (payload) -> async {
+            let! authToken = getToken ctx protector endpoint
+            let! response = httpAsync {
+                                DELETE (sprintf "%s/links/%O/tag/%s" endpoint payload.linkId payload.tagName)
+                                Authorization (sprintf "Bearer %s" authToken)
+                            }
+            return response.statusCode
+        }
+
+        ``search-links`` = fun (queryParams) -> async {
+            let! response =
+                    httpAsync {
+                        GET (sprintf "%s/links/search/%s?page=%i" endpoint queryParams.term queryParams.page)
+                    }
+
+            let links =
+                response
+                |> toText
+
+            return links
+        }
     }
 
 type ChannelService (ctx: IRemoteContext, env: IWebHostEnvironment, config: IConfiguration, dataProvider: IDataProtectionProvider) =

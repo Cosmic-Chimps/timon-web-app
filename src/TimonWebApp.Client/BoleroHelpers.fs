@@ -9,19 +9,23 @@ open Bolero.Html
 
 type KeySubscriber() =
     inherit Component()
+
     interface IDisposable with
-        member this.Dispose () =
-            this.JsRunTime.InvokeVoidAsync("generalFunctions.removeOnKeyUp") |> ignore
+        member this.Dispose() =
+            this.JsRunTime.InvokeVoidAsync("generalFunctions.removeOnKeyUp")
+            |> ignore
 
     [<Inject>]
-    member val JsRunTime : IJSRuntime = Unchecked.defaultof<_> with get, set
+    member val JsRunTime: IJSRuntime = Unchecked.defaultof<_> with get, set
+
     override this.Render() = empty
+
     override this.OnAfterRenderAsync firstTime =
-        async{
+        async {
             if firstTime then
-                return!
-                    this.JsRunTime.InvokeVoidAsync("generalFunctions.registerForOnKeyUp").AsTask()
-                    |> Async.AwaitTask
+                return! this.JsRunTime.InvokeVoidAsync("generalFunctions.registerForOnKeyUp").AsTask()
+                        |> Async.AwaitTask
             else
                 return ()
-        } |> Async.StartImmediateAsTask :> _
+        }
+        |> Async.StartImmediateAsTask :> _

@@ -322,6 +322,7 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+*.DS_Store
 
 # OpenCover UI analysis results
 OpenCover/

@@ -166,8 +166,7 @@ let mapDataLinksToView (dataLinks: GetLinksResult) =
         { view = lv
           isTagFormOpen = false
           errorValidateForm = None
-          tagForm = { tags = "" }
-          openMoreInfo = false })
+          tagForm = { tags = "" } })
     |> Seq.toArray
 
 let update (jsRuntime: IJSRuntime)
@@ -314,6 +313,16 @@ let update (jsRuntime: IJSRuntime)
             ChannelMenuForm.update jsRuntime timonService msg model.channelMenuFormModel
 
         { model with channelMenuFormModel = m }, Cmd.map ChannelMenuFormMsg cmd
+
+    | LinkViewItemMsg (LinkViewList.Message.LoadLinksSearch (term)), _ ->
+        let channelModel =
+            { model.channelMenuModel with
+                  activeChannelId = Guid.Empty }
+
+        { model with
+              channelMenuModel = channelModel
+              activeMenuSection = MenuSection.Search },
+        Cmd.ofMsg (LoadSearch(term, 0))
 
     | LinkViewItemMsg (LinkViewList.Message.LoadLinksByTag (tag)), _ ->
         let channelModel =

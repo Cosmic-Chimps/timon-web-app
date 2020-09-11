@@ -18,15 +18,20 @@ type LinkViewValidationForm =
     { view: GetLinksResultProvider.Link
       isTagFormOpen: bool
       errorValidateForm: Result<TagForm, Map<string, string list>> option
-      tagForm: TagForm
-      openMoreInfo: bool }
+      tagForm: TagForm}
 
 type Model =
-    { links: LinkViewValidationForm array
-      authentication: AuthState }
+    {
+      links: LinkViewValidationForm array
+      authentication: AuthState
+      isSaving: bool
+    }
     static member Default =
-        { links = Array.empty
-          authentication = AuthState.NotTried }
+        {
+          links = Array.empty
+          authentication = AuthState.NotTried
+          isSaving = false
+        }
 
 type Message =
     | SetTagFormField of string * string * LinkViewValidationForm
@@ -35,10 +40,9 @@ type Message =
     | AddTag of LinkViewValidationForm
     | TagsUpdated of Guid * HttpStatusCode
     | NotifyTagsUpdated
-    | ToggleInfoClicked of LinkViewValidationForm
-    | HideInfoClicked of LinkViewValidationForm
     | LoadLinks of Guid * string
     | LoadLinksByTag of string
+    | LoadLinksSearch of string
     | DeleteTagFromLink of string * Guid
 
 let validateTagForm (tagForm) =
@@ -119,7 +123,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
         let linksMapAdding = updateLink newLf
 
-        { model with links = linksMapAdding }, Cmd.ofMsg NotifyTagsUpdated
+        { model with links = linksMapAdding; isSaving = false }, Cmd.ofMsg NotifyTagsUpdated
 
     | ToggleTagForm (linkForm), _ ->
         let linkForm' =
@@ -136,19 +140,6 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
         { model with links = links }, Cmd.none
 
-    | ToggleInfoClicked (linkForm), _ ->
-        let linkForm' =
-            { linkForm with
-                  openMoreInfo = not linkForm.openMoreInfo }
-
-        let links = updateLink linkForm'
-
-        { model with links = links }, Cmd.none
-    | HideInfoClicked (linkForm), _ ->
-        let linkForm' = { linkForm with openMoreInfo = false }
-        let links = updateLink linkForm'
-
-        { model with links = links }, Cmd.none
     | AddTag linkForm, _ ->
 
         let hasError =
@@ -166,7 +157,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
             let cmd =
                 Cmd.ofAsync addTags (timonService, payload) TagsUpdated raise
 
-            model, cmd
+            { model with isSaving = true }, cmd
     | DeleteTagFromLink (tag, linkId), _ ->
         let payload = { linkId = linkId; tagName = tag }
 
@@ -176,6 +167,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
         model, cmd
     | LoadLinks _, _ -> model, Cmd.none
     | LoadLinksByTag _, _ -> model, Cmd.none
+    | LoadLinksSearch _, _ -> model, Cmd.none
     | _, _ -> model, Cmd.none
 
 
@@ -212,6 +204,11 @@ type Component() =
                         <| String.concat " " [ "mdi"; icon ] ] []
                 ]
 
+            let isLoadingButton =
+                match model.isSaving with
+                | true -> Bulma.``is-loading``
+                | false -> String.Empty
+
             let linkTags =
                 concat [ match l.view.Link.Tags with
                          | "" -> empty
@@ -220,7 +217,7 @@ type Component() =
                                  a [ attr.``class`` Bulma.``level-item``
                                      on.click (fun _ -> dispatch (LoadLinksByTag(tag.Trim()))) ] [
                                      span [ attr.``class``
-                                            <| String.concat " " [ Bulma.tag; Bulma.``is-info`` ] ] [
+                                            <| String.concat " " [ Bulma.tag; Bulma.``is-info``; isLoadingButton ] ] [
                                          text (tag.Trim())
                                          button [ attr.``class``
                                                   <| String.concat " " [ Bulma.delete; Bulma.``is-small`` ]
@@ -240,21 +237,21 @@ type Component() =
                           | false -> empty ]
                 | _ -> empty
 
-            let isActiveDropdownClass =
-                match l.openMoreInfo with
-                | true -> Bulma.``is-active``
-                | false -> ""
-
-            ComponentsTemplate.LinkItem().Url(l.view.Link.Url).Title(l.view.Link.Title)
-                              .DomainName(l.view.Link.DomainName).Date(l.view.Data.DateCreated.ToString())
-                              .ShortDescription(l.view.Link.ShortDescription)
-                              .ChannelName(sprintf "#%s" (l.view.Channel.Name)).SharedBy(l.view.User.Email)
-                              .Via(l.view.Data.Via).LinkTags(linkTags).TagForm(tagForm)
-                              .OnMoreInfoClicked(fun _ -> dispatch (ToggleInfoClicked l))
-                              .OnMoreInfoBlurred(fun _ -> dispatch (HideInfoClicked l))
-                              .ShowDropdownClass(isActiveDropdownClass)
-                              .OnChannelClicked(fun _ -> dispatch (LoadLinks(l.view.Channel.Id, l.view.Channel.Name)))
-                              .Elt())
+            ComponentsTemplate.LinkItem()
+                .Url(l.view.Link.Url)
+                .Title(l.view.Link.Title)
+                .DomainName(l.view.Link.DomainName)
+                .Date(l.view.Data.DateCreated.DateTime.ToString())
+                .ShortDescription(l.view.Link.ShortDescription)
+                .ChannelName(sprintf "#%s" (l.view.Channel.Name))
+                .SharedBy(l.view.User.Email)
+                .Via(l.view.Data.Via)
+                .LinkTags(linkTags)
+                .TagForm(tagForm)
+                .OnChannelClicked(fun _ -> dispatch (LoadLinks(l.view.Channel.Id, l.view.Channel.Name)))
+                .OnViaClicked(fun _ -> dispatch (LoadLinksSearch(l.view.Data.Via)))
+                .OnDomainClicked(fun _ -> dispatch (LoadLinksSearch(l.view.Link.DomainName)))
+                .Elt())
 
 let view authState (model: Model) dispatch =
     ecomp<Component, _, _>

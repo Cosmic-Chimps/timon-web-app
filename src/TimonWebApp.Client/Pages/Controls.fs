@@ -13,7 +13,7 @@ let errorAndClass name onFocus (result: Result<_, Map<_, _>> option) =
     | Some _, _ -> None, "modified valid"
     | _ -> None, ""
 
-let formFieldItem validatedForm onFocus focusMessage fieldType name value callback =
+let formFieldItem validatedForm onFocus (isDisabled: bool) fieldType name value callback =
     let error, validClass = errorAndClass name onFocus validatedForm
     div [ attr.``class`` "field" ] [
         div [ attr.``class`` "control" ] [
@@ -26,6 +26,7 @@ let formFieldItem validatedForm onFocus focusMessage fieldType name value callba
                     attr.``type`` fieldType
                     attr.placeholder name
                     attr.autofocus ""
+                    attr.disabled isDisabled
                     bind.input.string value callback ]
             match error with
             | Some value ->

@@ -1,45 +1,10 @@
-<section class="hero is-info">
-    <div class="hero-body">
-        <div class="container">
-            <div class="card">
-                <div class="card-content">
-                    <div class="content">
-                        <div class="control has-icons-left has-icons-right">
-                            ${SearchBox}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+${EmptyLinksHole}
+${SearchBox}
 <section class="section">
     <div class="container">
         <div class="columns">
-            <div class="column is-3">
-                <aside class="is-medium menu">
-                    ${ChannelForm}
-                    <ul class="menu-list">
-                        <li><a class="${AllActiveClass}" onclick="${LoadAllLinks}">All</a></li>
-                        ${ChannelListHole}
-                    </ul>
-
-                    <p class="menu-label">
-                        Recent tags
-                    </p>
-                    <ul class="menu-list">
-                        ${RecentTagListHole}
-                    </ul>
-
-                    <p class="menu-label">
-                        Recent search
-                    </p>
-                    <ul class="menu-list">
-                        ${RecentSearchListHole}
-                    </ul>
-                </aside>
-            </div>
-            <div class="column is-9">
+            ${MenuSidebar}
+            <div class="column">
                 ${AddLinkBoxHole}
                 ${LinksTitleSection}
                 ${LinkListHole}
@@ -164,19 +129,21 @@
     <div class="columns is-mobile is-centered">
         <div class="field is-grouped is-grouped-multiline">
             <div class="control">
-                <div class="tags has-addons"><a class="tag is-link"
-                                                href="https://cosmic-chimps">Cosmic Chimps</a>
+                <div class="tags has-addons"><a class="tag is-link" href="https://cosmic-chimps">Cosmic Chimps</a>
                     <span class="tag is-info">MIT license</span>
                 </div>
             </div>
             <div class="control">
-            <div>Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
+                <div>Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from
+                    <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
             </div>
 
         </div>
     </div>
 
 </footer>
+
+
 <!--<script src='https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.js'></script>-->
 <!--<script src='https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/1.9.1/js/OverlayScrollbars.min.js'></script>-->
 

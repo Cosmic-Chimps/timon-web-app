@@ -9,19 +9,20 @@ open TimonWebApp.Client.Pages
 open TimonWebApp.Client.Services
 open Bolero.Html
 open TimonWebApp.Client.Validation
+open System
 
 type ChannelForm = { name: string }
 
 type Model =
     { errorsValidateChannelForm: Result<ChannelForm, Map<string, string list>> option
       channelForm: ChannelForm
-      isAddingChannel: bool
-      authentication: AuthState }
+      clubId: ClubId
+      isAddingChannel: bool }
     static member Default =
         { channelForm = { name = "" }
           errorsValidateChannelForm = None
           isAddingChannel = false
-          authentication = AuthState.NotTried }
+          clubId = Guid.Empty }
 
 type Message =
     | ValidateChannel
@@ -77,10 +78,10 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
     | _, ({ errorsValidateChannelForm = Some (Error _) }) -> model, Cmd.none
 
     | AddChannel, _ ->
-        let payload: CreateChannelPayload = { name = model.channelForm.name }
+        let payload: CreateChannelPayload = { clubId = model.clubId; name = model.channelForm.name }
 
         let cmd =
-            Cmd.ofAsync createChannel (timonService, payload) ChannelAdded raise
+            Cmd.OfAsync.either createChannel (timonService, payload) ChannelAdded raise
 
         model, cmd
     | _, _ -> model, Cmd.none
@@ -116,13 +117,14 @@ type Component() =
                     <| String.concat " " [ "mdi"; icon ] ] []
             ]
 
-        match model.authentication with
-        | AuthState.Success -> ComponentsTemplate.AddChannelForm().Icon(icon).ChannelInput(inputBox).Elt()
-        | _ -> ComponentsTemplate.AddChannelForm().Elt()
+        ComponentsTemplate
+            .AddChannelForm()
+            .Icon(icon)
+            .ChannelInput(inputBox)
+            .Elt()
 
-let view authState (model: Model) dispatch =
+let view (model: Model) dispatch =
     ecomp<Component, _, _>
         []
-        { model with
-              authentication = authState }
+        model
         dispatch

@@ -14,7 +14,8 @@ type Model =
     { failureReason: string option
       form: SignUpRequest
       validatedForm: Result<SignUpRequest, Map<string, string list>> option
-      focus: string option }
+      focus: string option
+      isLoading: bool }
     static member Default =
         { failureReason = None
           form =
@@ -25,7 +26,8 @@ type Model =
                 password = ""
                 confirmPassword = "" }
           validatedForm = None
-          focus = None }
+          focus = None
+          isLoading = false }
 
 let init _ = Model.Default, Cmd.none
 
@@ -104,11 +106,19 @@ let update (timonService: TimonService) message (model: Model) =
 
     | FormValidated, _ ->
         let cmd =
-            Cmd.ofAsync signUp (timonService, model.form) SignUpSuccess SignUpError
+            Cmd.OfAsync.either signUp (timonService, model.form) SignUpSuccess SignUpError
 
-        model, cmd
+        { model with isLoading = true }, cmd
 
-    | SignUpSuccess _, _ -> model, Cmd.none
+    | SignUpSuccess _, _ ->
+        let form = { model.form with
+                        firstName = String.Empty
+                        lastName = String.Empty
+                        userName = String.Empty
+                        email = String.Empty
+                        password = String.Empty
+                        confirmPassword = String.Empty }
+        { model with isLoading = false; form = form} , Cmd.none
 
     | SignUpError exn, _ ->
         { model with
@@ -131,12 +141,8 @@ let view model dispatch =
             ]
         | None -> empty
 
-
-    let focused =
-        (fun name -> Action<_>(fun _ -> dispatch (Focused name)))
-
     let formFieldItem =
-        Controls.formFieldItem model.validatedForm model.focus focused
+        Controls.formFieldItem model.validatedForm model.focus model.isLoading
 
     let pd name =
         fun v -> dispatch (SetFormField(name, v))
@@ -158,7 +164,9 @@ let view model dispatch =
                                        Bulma.``is-block``
                                        Bulma.``is-primary``
                                        Bulma.``is-large``
-                                       Bulma.``is-fullwidth`` ]
+                                       Bulma.``is-fullwidth``
+                                       if model.isLoading then Bulma.``is-loading`` else ""]
+                              attr.disabled model.isLoading
                               on.click (fun _ -> dispatch ValidateForm) ] [
                          text "Sign up"
                      ] ]

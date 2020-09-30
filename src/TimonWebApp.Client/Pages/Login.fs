@@ -15,13 +15,15 @@ type Model =
       isSignedIn: bool
       currentLogin: LoginRequest
       validatedLogin: Result<LoginRequest, Map<string, string list>> option
+      isLoading: bool
       focus: string option }
     static member Default =
         { currentLogin = { email = ""; password = "" }
           validatedLogin = None
           isSignedIn = false
           failureReason = None
-          focus = None }
+          focus = None
+          isLoading = false }
 
 type Message =
     | DoLogin
@@ -51,7 +53,7 @@ let validateForm (form: LoginRequest) =
         { email = validEmail t "Email" form.email
           password = cannotBeBlank t "Password" form.password }
 
-let update (timonService: TimonService) message (model, _: State) =
+let update (timonService: TimonService) message model =
     let validateForced form =
         let validated = validateForm form
         { model with
@@ -84,25 +86,29 @@ let update (timonService: TimonService) message (model, _: State) =
 
     | _, ({ validatedLogin = Some (Error _) }) -> model, Cmd.none
 
-    | DoLogin, _ -> model.currentLogin |> validateForced, Cmd.ofMsg (LoginValidated)
+    | DoLogin, _ ->
+        model.currentLogin |> validateForced, Cmd.ofMsg (LoginValidated)
 
     | LoginValidated, _ ->
         let loginRequest =
             { email = model.currentLogin.email
               password = model.currentLogin.password }
 
-        model, Cmd.ofAsync logIn (timonService, loginRequest) LoginSuccess LoginError
 
-    | LoginSuccess _, _ -> model, Cmd.none
+        { model with isLoading = true }, Cmd.OfAsync.either logIn (timonService, loginRequest) LoginSuccess LoginError
+
+    | LoginSuccess _, _ ->
+        let currentLoginForm = { model.currentLogin with email = String.Empty; password = String.Empty }
+        { model with isLoading = false; currentLogin = currentLoginForm }, Cmd.none
 
     //    | LoginSuccess value, _ ->
 //        match value with
 //        | Some loginResponse -> { model with IsSignedIn = true}, Cmd.ofMsg(SignInSuccessful loginResponse)
 //        | None -> { model with IsSignedIn = false }, Cmd.none
 
-    | LoginError exn, _ ->
+    | LoginError _, _ ->
         { model with
-              failureReason = Some "Verify your email or password" },
+              failureReason = Some "Verify your email or password"; isLoading = false },
         Cmd.none
 
     | _ -> failwith ""
@@ -153,11 +159,8 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                             ]
                         | None -> ()
 
-                        let focused =
-                            (fun name -> Action<_>(fun _ -> dispatch (Focused name)))
-
                         let formFieldItem =
-                            Controls.formFieldItem model.validatedLogin model.focus focused
+                            Controls.formFieldItem model.validatedLogin model.focus model.isLoading
 
                         let pd name =
                             fun v -> dispatch (SetFormField(name, v))
@@ -174,7 +177,9 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                                                        Bulma.``is-block``
                                                        Bulma.``is-primary``
                                                        Bulma.``is-large``
-                                                       Bulma.``is-fullwidth`` ]
+                                                       Bulma.``is-fullwidth``
+                                                       if model.isLoading then Bulma.``is-loading`` else "" ]
+                                              attr.disabled model.isLoading
                                               on.click (fun _ -> dispatch DoLogin) ] [
                                          text "Log in"
                                      ] ]

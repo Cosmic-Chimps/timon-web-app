@@ -16,9 +16,12 @@
         <Compile Include="Pages\Components\ChannelMenu.fs" />
         <Compile Include="Pages\Components\ChannelMenuForm.fs" />
         <Compile Include="Pages\Components\LinkViewList.fs" />
+        <Compile Include="Pages\Components\ClubLinkViewList.fs" />
         <Compile Include="Pages\Components\RecenTagsMenu.fs" />
+        <Compile Include="Pages\Components\InputSearchBox.fs" />
         <Compile Include="Pages\Components\SearchBox.fs" />
         <Compile Include="Pages\Components\RecentSearchMenu.fs" />
+        <Compile Include="Pages\Components\HomeSidebar.fs" />
         <Compile Include="Pages\SignUp.fs" />
         <Compile Include="Pages\Login.fs" />
         <Compile Include="Pages\Home.fs" />

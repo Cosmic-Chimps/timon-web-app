@@ -10,41 +10,62 @@ open TimonWebApp.Client.Pages.Controls
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 open Bolero.Html
+open Microsoft.JSInterop
 
 
 type Model =
-    { term: string }
+    {
+      inputSearchBoxModel: InputSearchBox.Model
+      term: string
+      authState: AuthState
+      clubName: string
+    }
     static member Default = {
-        term = String.Empty
+      inputSearchBoxModel = InputSearchBox.Model.Default
+      authState = AuthState.NotTried
+      term = String.Empty
+      clubName = String.Empty
     }
 
 type Message =
-    | SetField of string
-    | Search of string
+  | InputSearchBoxMsg of InputSearchBox.Message
+  | LoadSearch of string * int
 
 let update (timonService: TimonService) (message: Message) (model: Model) =
-    match message, model with
-    | SetField (value), _ ->
-        { model with term = value.Trim() }, Cmd.none
-    | _, _ -> model, Cmd.none
+  match message, model with
+  | InputSearchBoxMsg (InputSearchBox.Message.Search (term)), _ ->
+    { model with term = term }, Cmd.ofMsg (LoadSearch(term, 0))
+
+  | InputSearchBoxMsg msg, _ ->
+    let m, cmd =
+        InputSearchBox.update timonService msg model.inputSearchBoxModel
+
+    { model with inputSearchBoxModel = m }, Cmd.none
+
+  | LoadSearch _, _ -> model, Cmd.none
 
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
 
     override _.View model dispatch =
-        let formFieldItem = inputSearch
+      match model.authState with
+      | AuthState.Success ->
+        let inputSearchBox =
+          InputSearchBox.view model.inputSearchBoxModel (InputSearchBoxMsg >> dispatch)
 
-        let inputCallback =
-            fun v -> dispatch (SetField(v))
+        ComponentsTemplate
+          .SearchBox()
+          .InputSearchBox(inputSearchBox)
+          .ClubName(model.clubName)
+          .Elt()
+      | _ -> empty
 
-        let buttonAction = fun _ -> dispatch (Search model.term)
-
-        formFieldItem model.term inputCallback buttonAction
 
 
-let view (model: Model) dispatch =
+let view authState (model: Model) dispatch =
     ecomp<Component, _, _>
         []
-        model
+        { model with
+              authState = authState }
         dispatch

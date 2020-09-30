@@ -6,7 +6,7 @@
                     <p class="title is-4">
                         <strong><a href="${Url}" target="_blank">${Title}</a></strong>
                     </p>
-                    <br/>
+                    <br />
                     <p class="subtitle is-5 pt-4">
                         ${ShortDescription}
                     </p>
@@ -28,37 +28,40 @@
                         </a>
                     </div>
                 </nav>
-                <div class="level is-mobile is-centered">
-                    <div class="field is-grouped is-grouped-multiline">
-                        <div class="control">
-                            <div class="tags has-addons">
-                                <span class="tag is-link">via</span>
-                                <a class="tag is-info" onclick="${OnViaClicked}" >${Via}</a>
-                            </div>
-                        </div>
-                        <div class="control">
-                            <div class="tags has-addons">
-                                <span class="tag is-link">domain</span>
-                                <a class="tag is-info" onclick="${OnDomainClicked}">${DomainName}</a>
-                            </div>
-                        </div>
-                        <div class="control">
-                            <div class="tags has-addons">
-                                <span class="tag is-link">shared by</span>
-                                <span class="tag is-info">${SharedBy}</span>
-                            </div>
-                        </div>
-                        <div class="control">
-                            <div class="tags has-addons">
-                                <span class="tag is-link">shared at</span>
-                                <span class="tag is-info">${Date}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                ${LinkMetadataHole}
             </div>
         </article>
+    </div>
+</template>
+
+<template id="LinkMetadataLevel">
+    <div class="level is-mobile is-centered">
+        <div class="field is-grouped is-grouped-multiline">
+            <div class="control">
+                <div class="tags has-addons">
+                    <span class="tag is-link">via</span>
+                    <a class="tag is-info" onclick="${OnViaClicked}">${Via}</a>
+                </div>
+            </div>
+            <div class="control">
+                <div class="tags has-addons">
+                    <span class="tag is-link">domain</span>
+                    <a class="tag is-info" onclick="${OnDomainClicked}">${DomainName}</a>
+                </div>
+            </div>
+            <div class="control">
+                <div class="tags has-addons">
+                    <span class="tag is-link">shared by</span>
+                    <span class="tag is-info">${SharedBy}</span>
+                </div>
+            </div>
+            <div class="control">
+                <div class="tags has-addons">
+                    <span class="tag is-link">shared at</span>
+                    <span class="tag is-info">${Date}</span>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -82,4 +85,70 @@
 
 <template id="MenuRecentSearchItem">
     <li><a class="${ActiveClass}" onclick="${LoadLinks}"><span class="tag is-warning is-medium">${Name}</span></a></li>
+</template>
+
+<template id="SearchBox">
+    <section class="hero is-info">
+        <div class="hero-body">
+            <div class="container">
+                <div class="level">
+                    <div class="level-left">
+                        <div class="level-item">
+                            <div class="title"><i class="mdi mdi-tree"></i> ${ClubName}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-content">
+                        <div class="content">
+                            <div class="control has-icons-left has-icons-right">
+                                ${InputSearchBox}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+<template id="MenuSidebar">
+    <div class="column is-3">
+        <aside class="is-medium menu">
+            ${ChannelForm}
+            <ul class="menu-list">
+                <li><a class="${AllActiveClass}" onclick="${LoadAllLinks}">All</a></li>
+                ${ChannelListHole}
+            </ul>
+
+            <p class="menu-label">
+                Recent tags
+            </p>
+            <ul class="menu-list">
+                ${RecentTagListHole}
+            </ul>
+
+            <p class="menu-label">
+                Recent search
+            </p>
+            <ul class="menu-list">
+                ${RecentSearchListHole}
+            </ul>
+        </aside>
+    </div>
+</template>
+
+<template id="EmptyListBanner">
+    <section class="hero is-primary">
+        <div class="hero-body">
+            <div class="columns">
+                <div class="column is-12">
+                    <div class="container content">
+                        <i class="is-large mdi mdi-party-popper mdi-48px"></i>
+                        <i class="is-large mdi mdi-link mdi-48px"></i>
+                        <h1 class="title">Register or Log in and start keeping and sharing <em>All</em> The Links</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
 </template>

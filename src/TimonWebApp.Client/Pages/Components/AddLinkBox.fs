@@ -19,6 +19,7 @@ type Model =
       authentication: AuthState
       channelName: string
       channelId: Guid
+      clubId: Guid
       activeSection: MenuSection
       tagName: string }
     static member Default =
@@ -28,7 +29,8 @@ type Model =
           channelName = ""
           channelId = Guid.Empty
           activeSection = MenuSection.Channel
-          tagName = String.Empty }
+          tagName = String.Empty
+          clubId = Guid.Empty }
 
 type Message =
     | SetFormField of string * string
@@ -87,10 +89,11 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
             { url = model.urlForm.url
               channelId = channelId
               via = "web"
-              tagName = tagName }
+              tagName = tagName
+              clubId = model.clubId }
 
         let cmdAddLink =
-            Cmd.ofAsync createLink (timonService, createLinkPayload) LinkAdded raise
+            Cmd.OfAsync.either createLink (timonService, createLinkPayload) LinkAdded raise
 
         model, cmdAddLink
     | _, _ -> model, Cmd.none

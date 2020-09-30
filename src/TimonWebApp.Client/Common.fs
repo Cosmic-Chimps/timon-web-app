@@ -44,3 +44,9 @@ type MenuSection =
     | Channel
     | Tag
     | Search
+
+
+type ChannelId = Guid
+type ClubId = Guid
+type ClubName = string
+type ChannelName = string

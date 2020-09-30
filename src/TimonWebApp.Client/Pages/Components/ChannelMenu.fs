@@ -20,13 +20,15 @@ type Model =
           activeSection = MenuSection.Channel }
 
 type Message =
-    | LoadLinks of Guid * string
-    | Empty
+    | OnChannelsLoaded of ChannelView array
+    | LoadLinks of ChannelId * string * MenuSection
 
-let update model msg =
-    match msg with
-    | LoadLinks _ -> model, Cmd.none
-    | Empty -> model, Cmd.none
+let update (message: Message) model =
+    match message with
+    | OnChannelsLoaded channels ->
+        { model with channels = channels }, Cmd.none
+    | LoadLinks (activeChannelId, _, activeMenuSection) ->
+        { model with activeChannelId = activeChannelId; activeSection = activeMenuSection}, Cmd.none
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -40,13 +42,15 @@ type Component() =
                 | true -> Bulma.``is-active``
                 | false -> ""
 
-            ComponentsTemplate.ChannelItem().Name(l.Name).LoadLinks(fun _ -> (dispatch (LoadLinks(l.Id, l.Name))))
-                              .ActiveClass(isActiveClass).Elt())
+            ComponentsTemplate
+                .ChannelItem()
+                .Name(l.Name)
+                .LoadLinks(fun _ -> (dispatch (LoadLinks(l.Id, l.Name, MenuSection.Channel))))
+                .ActiveClass(isActiveClass)
+                .Elt())
 
-let view authState (model: Model) (activeSection: MenuSection) dispatch =
+let view (model: Model) dispatch =
     ecomp<Component, _, _>
         []
-        { model with
-              authentication = authState
-              activeSection = activeSection }
+        model
         dispatch

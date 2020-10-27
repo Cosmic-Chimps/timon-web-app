@@ -62,6 +62,9 @@ type GetClubLinkParams =
 type GetLinkByTagsParams = { tagName: string; page: int }
 
 [<JsonFSharpConverter>]
+type GetClubLinkByTagsParams = { clubId: ClubId; tagName: string; page: int }
+
+[<JsonFSharpConverter>]
 type DeleteTagFromLink = { clubId: ClubId; linkId: Guid; tagName: string }
 
 [<JsonFSharpConverter>]
@@ -88,6 +91,7 @@ type LinkService =
       ``create-link``: CreateLinkPayload -> Async<HttpStatusCode>
       ``add-tags``: AddTagPayload -> Async<HttpStatusCode>
       ``get-links-by-tag``: GetLinkByTagsParams -> Async<string>
+      ``get-club-links-by-tag``: GetClubLinkByTagsParams -> Async<string>
       ``delete-tag-from-link``: DeleteTagFromLink -> Async<HttpStatusCode>
       ``search-links``: GetLinkSearchParams -> Async<string> }
 
@@ -185,5 +189,11 @@ let createClub (timonService, payload) =
 let getClubLinks (timonService, queryParams) =
     async {
         let! resp = timonService.linkService.``get-club-links`` queryParams
+        return GetClubLinksResultProvider.Parse resp
+    }
+
+let getClubLinksByTag (timonService, queryParams: GetClubLinkByTagsParams) =
+    async {
+        let! resp = timonService.linkService.``get-club-links-by-tag`` queryParams
         return GetClubLinksResultProvider.Parse resp
     }

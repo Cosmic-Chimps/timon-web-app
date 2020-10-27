@@ -49,6 +49,7 @@ type Message =
     | LoadClubLinks of ClubLinkViewList.ClubLoadListParams
     | ClubLinksLoaded of ClubListView
     | LoadLinksByTag of string * int
+    | LoadClubLinksByTag of string * int
     | LoadSearch of string * int
     | AddLinkBoxMsg of AddLinkBox.Message
     | LinkViewItemMsg of LinkViewList.Message
@@ -201,6 +202,8 @@ let update (jsRuntime: IJSRuntime)
         |> Async.AwaitTask
         |> ignore
 
+        printfn "Home.LinksLoaded %O" (linkViewListModel)
+
         { model with
               linkViewListModel = linkViewListModel
               page = data.Page
@@ -262,6 +265,23 @@ let update (jsRuntime: IJSRuntime)
               homeSidebar = homeSidebar },
         linksCmd
 
+    | LoadClubLinksByTag (tag, page), _ ->
+
+        let arg = ( model.clubId, tag, page )
+
+        let msg = ClubLinkViewList.Message.LoadClubLinksByTag (arg)
+
+        let clubLinkViewListModel, clubLinkViewListCmd =
+            ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
+
+        let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
+
+        { model with
+              page = page
+              tagName = tag
+              activeMenuSection = MenuSection.Tag
+              clubLinkViewListModel = clubLinkViewListModel }, Cmd.batch batchCmds
+
     | AddLinkBoxMsg (AddLinkBox.Message.NotifyLinkAdded), _ ->
         let cmd =
             match model.activeMenuSection with
@@ -269,6 +289,7 @@ let update (jsRuntime: IJSRuntime)
             | _ -> Cmd.ofMsg (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page))
 
         model, cmd
+
     | AddLinkBoxMsg msg, _ ->
         let m, cmd =
             AddLinkBox.update timonService msg model.addLinkBoxModel
@@ -395,6 +416,15 @@ let update (jsRuntime: IJSRuntime)
 
         let loadClubLinksArgs = shouldLoadChannels, model.clubName, model.clubId, channelName, channelId, page
         let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinks loadClubLinksArgs)]
+
+        { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
+
+    | HomeSidebarMsg (HomeSidebar.Message.LoadLinksByTag (tag, page) ), _ ->
+
+        let msg = HomeSidebar.Message.LoadLinksByTag (tag, page)
+        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
+
+        let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinksByTag (tag, page))]
 
         { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
 

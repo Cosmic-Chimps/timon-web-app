@@ -15,11 +15,11 @@ type Model =
           activeTag = String.Empty
           activeSection = MenuSection.Tag }
 
-type Message = LoadLinks of string
+type Message = LoadLinks of string * MenuSection
 
-let update model msg =
+let update msg model =
     match msg with
-    | LoadLinks _ -> model, Cmd.none
+    | LoadLinks (tag, activeSection) -> { model with activeTag = tag; activeSection = activeSection }, Cmd.none
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -31,7 +31,7 @@ type Component() =
                 | true -> Bulma.``is-active``
                 | false -> String.Empty
 
-            ComponentsTemplate.MenuTagItem().Name(t).ActiveClass(isActive).LoadLinks(fun _ -> (dispatch (LoadLinks t)))
+            ComponentsTemplate.MenuTagItem().Name(t).ActiveClass(isActive).LoadLinks(fun _ -> (dispatch (LoadLinks (t, MenuSection.Tag))))
                               .Elt())
 
 let view (model: Model) (activeSection: MenuSection) dispatch =

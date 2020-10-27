@@ -262,12 +262,31 @@ type LinkService(ctx: IRemoteContext,
                   async {
                       let! response =
                           httpAsync {
-                              GET(sprintf "%s/links/by-tag/%s?page=%i" endpoint queryParams.tagName queryParams.page) }
+                              GET(sprintf "%s/links/by-tag/%s?page=%i" endpoint queryParams.tagName queryParams.page)
+                          }
 
                       let links = response |> toText
 
                       return links
                   }
+
+          ``get-club-links-by-tag`` =
+              ctx.Authorize
+              <| fun queryParams ->
+                      printf "%s/clubs/%O/links/by-tag/%s?page=%i" endpoint queryParams.clubId queryParams.tagName queryParams.page
+                      async {
+                          let! authToken = getToken ctx protector endpoint
+
+                          let! response =
+                              httpAsync {
+                                  GET(sprintf "%s/clubs/%O/links/by-tag/%s?page=%i" endpoint queryParams.clubId queryParams.tagName queryParams.page)
+                                  Authorization(sprintf "Bearer %s" authToken)
+                              }
+
+                          let links = response |> toText
+
+                          return links
+                      }
 
           ``delete-tag-from-link`` =
               ctx.Authorize

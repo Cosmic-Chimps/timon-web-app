@@ -80,20 +80,40 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
     let channelMenuModel, cmd =
       ChannelMenu.update msg model.channelMenuModel
 
+    let recentTagsMenuModel = { model.recentTagsMenuModel with activeSection = activeSection }
+
     let cmdBatch =
       [ cmd; Cmd.ofMsg (LoadLinks(false, channel, channelId, 0)) ]
 
-    { model with channelMenuModel = channelMenuModel }, Cmd.batch cmdBatch
+    { model with
+        channelMenuModel = channelMenuModel
+        recentTagsMenuModel = recentTagsMenuModel
+        activeMenuSection = activeSection }, Cmd.batch cmdBatch
 
   | ChannelMenuMsg _, _ -> model, Cmd.none
 
-  | RecentTagsMenuMsg (RecentTagsMenu.Message.LoadLinks (tag)), _ ->
-      let channelModel =
-          { model.channelMenuModel with
-                activeChannelId = Guid.Empty
-                activeSection = Tag }
+  | RecentTagsMenuMsg (RecentTagsMenu.Message.LoadLinks (tag, activeSection)), _ ->
+    let msg =
+      RecentTagsMenu.Message.LoadLinks (tag, activeSection)
 
-      { model with channelMenuModel = channelModel }, Cmd.ofMsg (LoadLinksByTag(tag, 0))
+    let recentTagsMenuModel, cmd =
+      RecentTagsMenu.update msg model.recentTagsMenuModel
+
+    let channelMenuModel = { model.channelMenuModel with activeSection = activeSection }
+
+    let cmdBatch =
+      [ cmd; Cmd.ofMsg (LoadLinksByTag(tag, 0)) ]
+
+    { model with
+        recentTagsMenuModel = recentTagsMenuModel
+        channelMenuModel = channelMenuModel
+        activeMenuSection = activeSection }, Cmd.batch cmdBatch
+      // let channelModel =
+      //     { model.channelMenuModel with
+      //           activeChannelId = Guid.Empty
+      //           activeSection = Tag }
+
+      // { model with channelMenuModel = channelModel }, Cmd.ofMsg (LoadLinksByTag(tag, 0))
 
   | RecentSearchMenuMsg (RecentSearchMenu.Message.LoadLinks (term)), _ ->
       let recentSearchModel =

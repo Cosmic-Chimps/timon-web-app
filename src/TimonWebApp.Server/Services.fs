@@ -303,12 +303,16 @@ type LinkService(ctx: IRemoteContext,
                       return response.statusCode
                   }
 
-          ``search-links`` =
-              fun queryParams ->
+          ``search-club-links`` =
+              ctx.Authorize
+              <| fun queryParams ->
                   async {
+                      let! authToken = getToken ctx protector endpoint
                       let! response =
                           httpAsync {
-                              GET(sprintf "%s/links/search/%s?page=%i" endpoint queryParams.term queryParams.page) }
+                              GET(sprintf "%s/clubs/%O/links/search/%s?page=%i" endpoint queryParams.clubId queryParams.term queryParams.page)
+                              Authorization(sprintf "Bearer %s" authToken)
+                          }
 
                       let links = response |> toText
 

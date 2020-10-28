@@ -15,11 +15,11 @@ type Model =
           activeTerm = String.Empty
           activeSection = MenuSection.Search }
 
-type Message = LoadLinks of string
+type Message = LoadLinks of string * MenuSection
 
 let update model msg =
     match msg with
-    | LoadLinks _ -> model, Cmd.none
+    | LoadLinks (term, activeSection) -> { model with activeTerm = term; activeSection = activeSection }, Cmd.none
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -34,7 +34,7 @@ type Component() =
             ComponentsTemplate.MenuRecentSearchItem()
                 .Name(t)
                 .ActiveClass(isActive)
-                .LoadLinks(fun _ -> (dispatch (LoadLinks t)))
+                .LoadLinks(fun _ -> (dispatch (LoadLinks (t, MenuSection.Search))))
                 .Elt())
 
 let view (model: Model) (activeSection: MenuSection) dispatch =

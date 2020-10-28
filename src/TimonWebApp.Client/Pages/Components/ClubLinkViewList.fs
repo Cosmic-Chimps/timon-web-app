@@ -34,7 +34,7 @@ type Model =
           clubId = Guid.Empty }
 
 type ClubLoadListParams = bool * ClubName * ClubId * ChannelName * ChannelId * int
-type ClubLoadListByTagsParams = ClubId * string * int
+type ClubLoadListByTermParams = ClubId * string * int
 
 type Message =
     | SetTagFormField of string * string * ClubLinkViewValidationForm
@@ -48,7 +48,8 @@ type Message =
     | LoadLinksSearch of string
     | DeleteTagFromLink of string * Guid
     | LoadClubLinks of ClubLoadListParams
-    | LoadClubLinksByTag of ClubLoadListByTagsParams
+    | LoadClubLinksByTag of ClubLoadListByTermParams
+    | LoadClubLinksBySearch of ClubLoadListByTermParams
     | OnLoadClubLinks of ClubListView
 
 let private validateTagForm (tagForm) =
@@ -123,7 +124,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
       { model with isLoading = true; clubId = clubId }, cmd
 
-    | LoadClubLinksByTag (arg: ClubLoadListByTagsParams), _ ->
+    | LoadClubLinksByTag (arg: ClubLoadListByTermParams), _ ->
 
       let clubId, tag, page = arg
 
@@ -136,6 +137,22 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
       let cmd =
           Cmd.OfAsync.either getClubLinksByTag (timonService, queryParams) OnLoadClubLinks raise
+
+      { model with isLoading = true; clubId = clubId }, cmd
+
+    | LoadClubLinksBySearch (arg: ClubLoadListByTermParams), _ ->
+
+      let clubId, term, page = arg
+
+      let queryParams: GetClubLinkSearchParams =
+        {
+            clubId = clubId
+            term = term
+            page = page
+        }
+
+      let cmd =
+          Cmd.OfAsync.either searchClubLinks (timonService, queryParams) OnLoadClubLinks raise
 
       { model with isLoading = true; clubId = clubId }, cmd
 

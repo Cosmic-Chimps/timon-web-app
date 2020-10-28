@@ -21,6 +21,8 @@ type Model =
       recentSearchMenuModel: RecentSearchMenu.Model
       activeMenuSection: MenuSection
       channelId: ChannelId
+      tag: string
+      term: string
       clubId: ClubId
       authState: AuthState
     }
@@ -33,6 +35,8 @@ type Model =
       channelId = Guid.Empty
       authState = AuthState.NotTried
       clubId = Guid.Empty
+      tag = String.Empty
+      term = String.Empty
     }
 
 type Message =
@@ -82,12 +86,15 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
     let recentTagsMenuModel = { model.recentTagsMenuModel with activeSection = activeSection }
 
+    let recentSearchMenuModel = { model.recentSearchMenuModel with activeSection = activeSection }
+
     let cmdBatch =
       [ cmd; Cmd.ofMsg (LoadLinks(false, channel, channelId, 0)) ]
 
     { model with
         channelMenuModel = channelMenuModel
         recentTagsMenuModel = recentTagsMenuModel
+        recentSearchMenuModel = recentSearchMenuModel
         activeMenuSection = activeSection }, Cmd.batch cmdBatch
 
   | ChannelMenuMsg _, _ -> model, Cmd.none
@@ -101,38 +108,40 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
     let channelMenuModel = { model.channelMenuModel with activeSection = activeSection }
 
+    let recentSearchMenuModel = { model.recentSearchMenuModel with activeSection = activeSection }
+
     let cmdBatch =
       [ cmd; Cmd.ofMsg (LoadLinksByTag(tag, 0)) ]
 
     { model with
         recentTagsMenuModel = recentTagsMenuModel
         channelMenuModel = channelMenuModel
+        recentSearchMenuModel = recentSearchMenuModel
         activeMenuSection = activeSection }, Cmd.batch cmdBatch
-      // let channelModel =
-      //     { model.channelMenuModel with
-      //           activeChannelId = Guid.Empty
-      //           activeSection = Tag }
 
-      // { model with channelMenuModel = channelModel }, Cmd.ofMsg (LoadLinksByTag(tag, 0))
+  | RecentSearchMenuMsg (RecentSearchMenu.Message.LoadLinks (term, activeSection)), _ ->
+    let msg =
+      RecentSearchMenu.Message.LoadLinks (term, activeSection)
 
-  | RecentSearchMenuMsg (RecentSearchMenu.Message.LoadLinks (term)), _ ->
-      let recentSearchModel =
-          { model.recentSearchMenuModel with
-                activeTerm = term
-                activeSection = Search }
+    let recentSearchMenuModel, _ =
+      RecentSearchMenu.update model.recentSearchMenuModel msg
 
-      { model with
-            recentSearchMenuModel = recentSearchModel },
-      Cmd.ofMsg (LoadLinksBySearch(term, 0))
+    let channelMenuModel = { model.channelMenuModel with activeSection = activeSection }
+    let recentTagsMenuModel = { model.recentTagsMenuModel with activeSection = activeSection }
+
+    { model with
+        recentSearchMenuModel = recentSearchMenuModel
+        channelMenuModel = channelMenuModel
+        recentTagsMenuModel = recentTagsMenuModel }, Cmd.ofMsg (LoadLinksBySearch(term, 0))
 
   | LoadLinks (_, _, channelId, _), _ ->
-    { model with channelId = channelId } , Cmd.none
+    { model with channelId = channelId; activeMenuSection = MenuSection.Channel } , Cmd.none
 
-  | LoadLinksByTag _, _ ->
-    model, Cmd.none
+  | LoadLinksByTag (tag, _), _ ->
+    { model with tag = tag; activeMenuSection = MenuSection.Tag }, Cmd.none
 
-  | LoadLinksBySearch _, _ ->
-    model, Cmd.none
+  | LoadLinksBySearch (term, _), _ ->
+  { model with term = term; activeMenuSection = MenuSection.Search }, Cmd.none
 
 
 type Component() =
@@ -149,7 +158,6 @@ type Component() =
 
         let recentTags =
           RecentTagsMenu.view (model.recentTagsMenuModel) model.activeMenuSection (RecentTagsMenuMsg >> dispatch)
-
 
         let recentSearchMenu =
           RecentSearchMenu.view (model.recentSearchMenuModel) model.activeMenuSection (RecentSearchMenuMsg >> dispatch)

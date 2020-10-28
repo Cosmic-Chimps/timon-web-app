@@ -68,7 +68,7 @@ type GetClubLinkByTagsParams = { clubId: ClubId; tagName: string; page: int }
 type DeleteTagFromLink = { clubId: ClubId; linkId: Guid; tagName: string }
 
 [<JsonFSharpConverter>]
-type GetLinkSearchParams = { term: string; page: int }
+type GetClubLinkSearchParams = { clubId: ClubId; term: string; page: int }
 
 
 #if DEBUG
@@ -93,7 +93,7 @@ type LinkService =
       ``get-links-by-tag``: GetLinkByTagsParams -> Async<string>
       ``get-club-links-by-tag``: GetClubLinkByTagsParams -> Async<string>
       ``delete-tag-from-link``: DeleteTagFromLink -> Async<HttpStatusCode>
-      ``search-links``: GetLinkSearchParams -> Async<string> }
+      ``search-club-links``: GetClubLinkSearchParams -> Async<string> }
 
     interface IRemoteService with
         member this.BasePath = "/links"
@@ -147,10 +147,10 @@ let getLinksByTag (timonService, queryParams) =
         return GetLinksResultProvider.Parse resp
     }
 
-let searchLinks (timonService, queryParams) =
+let searchClubLinks (timonService, queryParams: GetClubLinkSearchParams) =
     async {
-        let! resp = timonService.linkService.``search-links`` queryParams
-        return GetLinksResultProvider.Parse resp
+        let! resp = timonService.linkService.``search-club-links`` queryParams
+        return GetClubLinksResultProvider.Parse resp
     }
 
 let createLink (timonService, payload) =

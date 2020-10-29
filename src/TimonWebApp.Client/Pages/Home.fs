@@ -229,10 +229,15 @@ let update (jsRuntime: IJSRuntime)
       let clubLinkViewListModel, clubLinkViewListCmd =
         ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
 
-      let homeSideBarModel = { model.homeSidebar with clubId = clubId}
+      let homeSideBarModel = { model.homeSidebar with clubId = clubId; channelId = channelId }
+
+      let homeSideBarMsg = Cmd.ofMsg (HomeSidebar.Message.UpdateChannelId channelId)
+
+      let searchBoxMessage = SearchBox.Message.UpdateInputSearchBox String.Empty
+      let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
       let batchCmds =
-          [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
+          [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd; Cmd.map HomeSidebarMsg homeSideBarMsg  ]
           @ match shouldLoadChannels with
             | true -> [ Cmd.map HomeSidebarMsg (Cmd.ofMsg HomeSidebar.Message.LoadChannels) ]
             | false -> [ Cmd.none ]
@@ -243,6 +248,7 @@ let update (jsRuntime: IJSRuntime)
             clubId = clubId
             channelName = channelName
             channelId = channelId
+            searchBoxModel = searchBoxModel
             activeMenuSection = MenuSection.Channel
             clubLinkViewListModel = clubLinkViewListModel
             homeSidebar = homeSideBarModel }, Cmd.batch batchCmds
@@ -274,12 +280,20 @@ let update (jsRuntime: IJSRuntime)
         let clubLinkViewListModel, clubLinkViewListCmd =
             ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
 
+        let searchBoxMessage = SearchBox.Message.UpdateInputSearchBox String.Empty
+        let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
+
+        let homeSidebarMessage = HomeSidebar.Message.LoadLinksByTag (tag, page)
+        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService homeSidebarMessage model.homeSidebar
+
         let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
 
         { model with
               page = page
               tagName = tag
               activeMenuSection = MenuSection.Tag
+              searchBoxModel = searchBoxModel
+              homeSidebar = homeSidebar
               clubLinkViewListModel = clubLinkViewListModel }, Cmd.batch batchCmds
 
     | LoadClubLinksSearch (term, page), _ ->
@@ -290,17 +304,20 @@ let update (jsRuntime: IJSRuntime)
         let clubLinkViewListModel, clubLinkViewListCmd =
             ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
 
-        let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
+        let searchBoxMessage = SearchBox.Message.UpdateInputSearchBox term
+        let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
-        let searchBoxModel =
-            { model.searchBoxModel with
-                  term = term }
+        let homeSidebarMessage = HomeSidebar.Message.LoadLinksBySearch (term, page)
+        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService homeSidebarMessage model.homeSidebar
+
+        let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
 
         { model with
               page = page
               term = term
               activeMenuSection = MenuSection.Search
               clubLinkViewListModel = clubLinkViewListModel
+              homeSidebar = homeSidebar
               searchBoxModel = searchBoxModel }, Cmd.batch batchCmds
 
     | AddLinkBoxMsg (AddLinkBox.Message.NotifyLinkAdded), _ ->
@@ -318,16 +335,9 @@ let update (jsRuntime: IJSRuntime)
         { model with addLinkBoxModel = m }, Cmd.map AddLinkBoxMsg cmd
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinksSearch (term)), _ ->
-        // let channelMenuModel =
-        //     { model.homeSidebar.channelMenuModel with activeChannelId = Guid.Empty }
-
-        // let homeSidebar =
-        //     { model.homeSidebar with channelMenuModel = channelMenuModel }
-
         { model with
-            // homeSidebar = homeSidebar
             activeMenuSection = MenuSection.Search },
-        Cmd.ofMsg (LoadSearch(term, 0))
+        Cmd.ofMsg (LoadClubLinksSearch(term, 0))
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinksByTag (tag)), _ ->
         let channelMenuModel =
@@ -375,12 +385,6 @@ let update (jsRuntime: IJSRuntime)
                   tagName = model.tagName
                   clubId = model.clubId }
 
-        // let channelMenuModel =
-        //     { model.homeSidebar.channelMenuModel with activeChannelId = model.channelId }
-
-        // let homeSidebar =
-        //     { model.homeSidebar with channelMenuModel = channelMenuModel }
-
         let cmdUpdateRecentTags =
             Cmd.OfAsync.either updateTagsLocalStorage (localStorage, model) RecentTagsUpdated raise
 
@@ -408,17 +412,7 @@ let update (jsRuntime: IJSRuntime)
 
 
     | SearchBoxMsg (SearchBox.Message.LoadSearch (term, page)), _ ->
-        // let arg = ( model.clubId, term, page )
-
-        // let msg = ClubLinkViewList.Message.LoadClubLinksBySearch (arg)
-
-        // let clubLinkViewListModel, clubLinkViewListCmd =
-        //     ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
-
-        // let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
         let cmdBatchs = [Cmd.ofMsg (LoadClubLinksSearch (term, page))]
-
-        // { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
 
         let searchBoxModel =
             { model.searchBoxModel with
@@ -456,13 +450,12 @@ let update (jsRuntime: IJSRuntime)
         { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
 
     | HomeSidebarMsg (HomeSidebar.Message.LoadLinksBySearch (term, page) ), _ ->
-
         let msg = HomeSidebar.Message.LoadLinksBySearch (term, page)
         let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
 
         let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinksSearch (term, page))]
 
-        { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
+        { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
 
     | HomeSidebarMsg msg, _ ->
         let m, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar

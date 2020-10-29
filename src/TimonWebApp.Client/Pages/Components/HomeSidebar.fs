@@ -49,6 +49,7 @@ type Message =
   | LoadLinks of bool * string * ChannelId * int
   | LoadLinksByTag of string * int
   | LoadLinksBySearch of string * int
+  | UpdateChannelId of ChannelId
 
 let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
   match message, model with
@@ -135,13 +136,23 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
         recentTagsMenuModel = recentTagsMenuModel }, Cmd.ofMsg (LoadLinksBySearch(term, 0))
 
   | LoadLinks (_, _, channelId, _), _ ->
-    { model with channelId = channelId; activeMenuSection = MenuSection.Channel } , Cmd.none
+    let channelMenuModel = { model.channelMenuModel with activeChannelId = channelId }
+    { model with channelId = channelId; activeMenuSection = MenuSection.Channel; channelMenuModel = channelMenuModel } , Cmd.none
 
   | LoadLinksByTag (tag, _), _ ->
-    { model with tag = tag; activeMenuSection = MenuSection.Tag }, Cmd.none
+    let msg = RecentTagsMenu.Message.LoadLinks (tag, MenuSection.Tag)
+    let recentTagsMenuModel, _ = RecentTagsMenu.update msg model.recentTagsMenuModel
+    { model with tag = tag; activeMenuSection = MenuSection.Tag; recentTagsMenuModel = recentTagsMenuModel }, Cmd.none
 
   | LoadLinksBySearch (term, _), _ ->
-  { model with term = term; activeMenuSection = MenuSection.Search }, Cmd.none
+    let msg = RecentSearchMenu.Message.LoadLinks (term, MenuSection.Search)
+    let recentSearchMenuModel, _ = RecentSearchMenu.update model.recentSearchMenuModel msg
+
+    { model with term = term; activeMenuSection = MenuSection.Search; recentSearchMenuModel = recentSearchMenuModel }, Cmd.none
+
+  | UpdateChannelId channelId, _ ->
+    let channelMenuModel = { model.channelMenuModel with activeChannelId = channelId }
+    { model with channelId = channelId; activeMenuSection = MenuSection.Channel; channelMenuModel = channelMenuModel } , Cmd.none
 
 
 type Component() =

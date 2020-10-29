@@ -30,6 +30,7 @@ type Model =
 type Message =
   | InputSearchBoxMsg of InputSearchBox.Message
   | LoadSearch of string * int
+  | UpdateInputSearchBox of string
 
 let update (timonService: TimonService) (message: Message) (model: Model) =
   match message, model with
@@ -43,6 +44,11 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
     { model with inputSearchBoxModel = m }, Cmd.none
 
   | LoadSearch _, _ -> model, Cmd.none
+
+  | UpdateInputSearchBox term , _->
+      let inputMessage = InputSearchBox.Message.SetField term
+      let inputSearchBoxModel, _ = InputSearchBox.update timonService inputMessage model.inputSearchBoxModel
+      { model with term = term; inputSearchBoxModel = inputSearchBoxModel}, Cmd.none
 
 
 type Component() =

@@ -94,7 +94,9 @@
                 <div class="level">
                     <div class="level-left">
                         <div class="level-item">
-                            <div class="title"><i class="mdi mdi-tree"></i> ${ClubName}</div>
+                            <div class="title"><i class="mdi mdi-tree"></i>
+                                ${ClubName} <a onClick="${ShowClubSidebar}"><i
+                                        class="mdi mdi-arrow-left-right-bold"></i></a></div>
                         </div>
                     </div>
                 </div>
@@ -151,4 +153,55 @@
                 </div>
             </div>
         </div>
+</template>
+
+
+<template id="ClubSidebar">
+    <div id="sidebar" class="has-background-primary-light ${SidebarClass}">
+        <section class="section">
+            <div class="level">
+                <div class="level-left">
+                    <h1 class="title">Clubs ${Icon}</h1>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <a class="delete is-medium" onclick="${ToggleVisibility}"></a>
+                    </div>
+                </div>
+            </div>
+            <div class="level">
+                <div class="level-left">
+                    ${ClubInput}
+                </div>
+            </div>
+            <div class="field">
+                <p class="control has-icons-left">
+                    <input class="input" type="text" placeholder="Search">
+                    <span class="icon is-small is-left">
+                        <i class="mdi mdi-tree"></i>
+                    </span>
+                </p>
+            </div>
+            <aside class="menu">
+                <p class="menu-label">
+                    Public
+                </p>
+                <ul class="menu-list">
+                    ${PublicClubs}
+                    <!-- <li><a>#${Name}</a></li> -->
+                </ul>
+                <p class="menu-label">
+                    Private
+                </p>
+                <ul class="menu-list">
+                    ${PrivateClubs}
+                    <!-- <li><a>#${Name}</a></li> -->
+                </ul>
+            </aside>
+        </section>
+    </div>
+</template>
+
+<template id="ClubLink">
+    <li><a onClick="${ChangeClub}">${Name}</a></li>
 </template>

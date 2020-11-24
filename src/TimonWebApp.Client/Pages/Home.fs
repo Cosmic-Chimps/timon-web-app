@@ -17,6 +17,7 @@ type Model =
       linkViewListModel: LinkViewList.Model
       clubLinkViewListModel: ClubLinkViewList.Model
       searchBoxModel: SearchBox.Model
+      clubSidebarModel: ClubSidebar.Model
       homeSidebar: HomeSidebar.Model
       clubName: string
       clubId: Guid
@@ -33,6 +34,7 @@ type Model =
           addLinkBoxModel = AddLinkBox.Model.Default
           searchBoxModel = SearchBox.Model.Default
           homeSidebar = HomeSidebar.Model.Default
+          clubSidebarModel = ClubSidebar.Model.Default
           channelName = "all"
           channelId = Guid.Empty
           page = 0
@@ -59,6 +61,7 @@ type Message =
     | RecentSearchUpdated of string list
     | SearchBoxMsg of SearchBox.Message
     | HomeSidebarMsg of HomeSidebar.Message
+    | ClubSidebarMsg of ClubSidebar.Message
 
 let init (_: IJSRuntime)  =
     Model.Default, Cmd.ofMsg (LoadLinks(0))
@@ -423,6 +426,14 @@ let update (jsRuntime: IJSRuntime)
               term = term
               activeMenuSection = MenuSection.Search
               searchBoxModel = searchBoxModel }, Cmd.batch cmdBatchs
+    | SearchBoxMsg (SearchBox.Message.ToggleSidebarVisibility), _ ->
+        let clubSidebarMessage = ClubSidebar.Message.ToggleSidebarVisibility
+
+        // let clubSidebarModel, _ = ClubSidebar.update timonService clubSidebarMessage model.clubSidebarModel
+
+        // { model with clubSidebarModel = clubSidebarModel }, Cmd.none
+
+        model, Cmd.ofMsg(ClubSidebarMsg clubSidebarMessage)
 
     | SearchBoxMsg msg, _ ->
         let m, cmd =
@@ -461,6 +472,22 @@ let update (jsRuntime: IJSRuntime)
         let m, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
 
         { model with homeSidebar = m}, Cmd.map HomeSidebarMsg cmd
+
+    | ClubSidebarMsg (ClubSidebar.Message.ChangeClub (clubId, clubName)), _ ->
+        let cmd =
+            Cmd.ofMsg (LoadClubLinks (true, clubName, clubId, String.Empty, Guid.Empty, 0))
+
+        let clubMsg = ClubSidebar.Message.ChangeClub (clubId, clubName)
+
+        let clubSidebarModel, _ = ClubSidebar.update jsRuntime timonService clubMsg model.clubSidebarModel
+
+        let searchBoxModel = { model.searchBoxModel with clubName = clubName }
+        { model with searchBoxModel = searchBoxModel ; clubSidebarModel = clubSidebarModel }, cmd
+
+    | ClubSidebarMsg msg, _ ->
+        let clubSidebarModel, cmd = ClubSidebar.update jsRuntime timonService msg model.clubSidebarModel
+        { model with clubSidebarModel = clubSidebarModel }, Cmd.map ClubSidebarMsg cmd
+
 
 
 type HomeTemplate = Template<"wwwroot/home.html">
@@ -590,7 +617,13 @@ let view authState model dispatch =
         | AuthState.Success -> empty
         | _ -> ComponentsTemplate.EmptyListBanner().Elt()
 
+    let clubSidebar =
+        match authState with
+        | AuthState.Success -> ClubSidebar.view model.clubSidebarModel (ClubSidebarMsg >> dispatch)
+        | _ -> empty
+
     HomeTemplate()
+        .ClubSidebar(clubSidebar)
         .LinkListHole(items)
         .MenuSidebar(homeSidebarHole)
         .AddLinkBoxHole(addLinkBoxHole)

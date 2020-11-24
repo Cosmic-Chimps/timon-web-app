@@ -4,32 +4,42 @@
 @inject IBoleroHostConfig BoleroHostConfig
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Timón</title>
-    <base href="/">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css" integrity="sha512-ADrqa2PY1TZtb/MoLZIZu/Z/LlPaWQeDMBV73EMwjGam43/JJ5fqW38Rq8LJOVGCDfrJeOMS3Q/wRUVzW5DkjQ==" crossorigin="anonymous" />
-    @* <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulmaswatch/0.8.1/slate/bulmaswatch.min.css" integrity="sha512-Dv+naixkO3O4RjnNj1NiJEyPVoD8+JVlKFRtZamMIMKEcMIaYP0nqojvC1HutVjqjI3w2JGtgih+L5sCByUUNg==" crossorigin="anonymous" /> *@
-    <link rel="stylesheet" href="https://unpkg.com/bulmaswatch/yeti/bulmaswatch.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/5.5.55/css/materialdesignicons.min.css" integrity="sha512-fwJwcnaCDZRE9ZXt3Gevw/0WLt8A4tH+5hb1v5ps08P12o4S4BoV0tqrAa71uyclLRQvg6YMKw2RoeqTqhQBhA==" crossorigin="anonymous" />
-    @* <link rel="stylesheet" href="css/index.css"> *@
-  </head>
-  <body>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Timón</title>
+  <base href="/">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css"
+    integrity="sha512-ADrqa2PY1TZtb/MoLZIZu/Z/LlPaWQeDMBV73EMwjGam43/JJ5fqW38Rq8LJOVGCDfrJeOMS3Q/wRUVzW5DkjQ=="
+    crossorigin="anonymous" />
+  @* <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulmaswatch/0.8.1/slate/bulmaswatch.min.css"
+    integrity="sha512-Dv+naixkO3O4RjnNj1NiJEyPVoD8+JVlKFRtZamMIMKEcMIaYP0nqojvC1HutVjqjI3w2JGtgih+L5sCByUUNg=="
+    crossorigin="anonymous" /> *@
+  <link rel="stylesheet" href="https://unpkg.com/bulmaswatch/yeti/bulmaswatch.min.css">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/5.5.55/css/materialdesignicons.min.css"
+    integrity="sha512-fwJwcnaCDZRE9ZXt3Gevw/0WLt8A4tH+5hb1v5ps08P12o4S4BoV0tqrAa71uyclLRQvg6YMKw2RoeqTqhQBhA=="
+    crossorigin="anonymous" />
+  <link rel="stylesheet" href="css/index.css">
+</head>
+
+<body>
   <div id="main">@(await Html.RenderComponentAsync<TimonWebApp.Client.Main.MyApp>(BoleroHostConfig))</div>
-    @Html.RenderBoleroScript(BoleroHostConfig)
+  @Html.RenderBoleroScript(BoleroHostConfig)
   <script>
-          window.generalFunctions = {
-              onkeyUp: function (event) {
-                  if (event.key === "Escape") document.getElementById("cancelButton").click();
-                  else if (event.key === "Enter") document.getElementById("confirmButton").click();
-              },
-              registerForOnKeyUp: function () {
-                  document.addEventListener("keyup", this.onkeyUp)
-              },
-              removeOnKeyUp: function () {
-                  document.removeEventListener("keyup", this.onkeyUp);
-              }
-          };
-      </script>
-  </body>
+    window.generalFunctions = {
+      onkeyUp: function (event) {
+        if (event.key === "Escape") document.getElementById("cancelButton").click();
+        else if (event.key === "Enter") document.getElementById("confirmButton").click();
+      },
+      registerForOnKeyUp: function () {
+        document.addEventListener("keyup", this.onkeyUp)
+      },
+      removeOnKeyUp: function () {
+        document.removeEventListener("keyup", this.onkeyUp);
+      }
+    };
+  </script>
+</body>
+
 </html>

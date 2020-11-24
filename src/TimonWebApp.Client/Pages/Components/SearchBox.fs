@@ -12,7 +12,6 @@ open TimonWebApp.Client.Validation
 open Bolero.Html
 open Microsoft.JSInterop
 
-
 type Model =
     {
       inputSearchBoxModel: InputSearchBox.Model
@@ -31,6 +30,7 @@ type Message =
   | InputSearchBoxMsg of InputSearchBox.Message
   | LoadSearch of string * int
   | UpdateInputSearchBox of string
+  | ToggleSidebarVisibility
 
 let update (timonService: TimonService) (message: Message) (model: Model) =
   match message, model with
@@ -44,6 +44,8 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
     { model with inputSearchBoxModel = m }, Cmd.none
 
   | LoadSearch _, _ -> model, Cmd.none
+
+  | ToggleSidebarVisibility, _ -> model, Cmd.none
 
   | UpdateInputSearchBox term , _->
       let inputMessage = InputSearchBox.Message.SetField term
@@ -64,6 +66,7 @@ type Component() =
           .SearchBox()
           .InputSearchBox(inputSearchBox)
           .ClubName(model.clubName)
+          .ShowClubSidebar(fun _ -> (dispatch (ToggleSidebarVisibility)))
           .Elt()
       | _ -> empty
 

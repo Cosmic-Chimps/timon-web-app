@@ -5,6 +5,7 @@ dl {
     padding: 0;
     margin: 0
 }
+
 dt {
     float: left;
     width: 50%;
@@ -13,6 +14,7 @@ dt {
     padding: 0;
     margin: 0
 }
+
 dd {
     float: left;
     width: 50%;
@@ -20,4 +22,23 @@ dd {
     background: #dd0;
     padding: 0;
     margin: 0
+}
+
+#sidebar {
+    /* background-color: #e0e0e0; */
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    left: 100%;
+    right: 0;
+    bottom: 0;
+    width: 25%;
+    transition: 1s;
+    z-index: 99;
+}
+
+#sidebar.show {
+    left: 75%;
 }

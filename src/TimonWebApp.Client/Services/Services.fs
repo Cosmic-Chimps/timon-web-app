@@ -72,10 +72,10 @@ type GetClubLinkSearchParams = { clubId: ClubId; term: string; page: int }
 
 
 #if DEBUG
-type GetLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v10/get/links">
-type ChannelViewProvider = JsonProvider<"http://localhost:5011/.meta/v10/get/channels">
-type ClubViewProvider = JsonProvider<"http://localhost:5011/.meta/v10/get/clubs">
-type GetClubLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v10/get/clubs/links">
+type GetLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/links">
+type ChannelViewProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/channels">
+type ClubViewProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/clubs">
+type GetClubLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/clubs/links">
 #else
 type GetLinksResultProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/v3/get/links">
 type ChannelViewProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/v3/channels">

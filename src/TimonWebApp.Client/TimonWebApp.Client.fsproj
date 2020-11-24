@@ -22,6 +22,7 @@
         <Compile Include="Pages\Components\SearchBox.fs" />
         <Compile Include="Pages\Components\RecentSearchMenu.fs" />
         <Compile Include="Pages\Components\HomeSidebar.fs" />
+        <Compile Include="Pages\Components\ClubSidebar.fs" />
         <Compile Include="Pages\SignUp.fs" />
         <Compile Include="Pages\Login.fs" />
         <Compile Include="Pages\Home.fs" />

@@ -18,6 +18,7 @@ type Model =
     isAddingClub: bool
     clubForm: ClubForm
     clubs: ClubView array
+    otherClubs: ClubView array
     errorsValidateForm: Result<ClubForm, Map<string, string list>> option }
 
   static member Default =
@@ -25,7 +26,8 @@ type Model =
       isAddingClub = false
       clubForm = { name = ""}
       errorsValidateForm = None
-      clubs = [||] }
+      clubs = [||]
+      otherClubs = [||] }
 
 
 type Message =
@@ -37,6 +39,7 @@ type Message =
   | ClubAdded of HttpStatusCode
   | LoadClubs
   | ClubsLoaded of ClubView array
+  | OtherClubsLoaded of ClubView array
   | ChangeClub of Guid * string
 
 let validateClubForm (clubForm) =
@@ -108,10 +111,16 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
       let cmd =
         Cmd.OfAsync.either getClubs (timonService) ClubsLoaded raise
 
-      model, cmd
+      let cmdOtherClubs =
+        Cmd.OfAsync.either getOtherClubs (timonService) OtherClubsLoaded raise
+
+      model, Cmd.batch [ cmd; cmdOtherClubs]
 
   | ClubsLoaded clubs, _ ->
       { model with clubs = clubs }, Cmd.none
+
+  | OtherClubsLoaded clubs, _ ->
+      { model with otherClubs = clubs }, Cmd.none
 
   | ChangeClub _, _ ->
     { model with sidebarClass = "" }, Cmd.none
@@ -171,6 +180,7 @@ type Component() =
         .ClubInput(inputBox)
         .PublicClubs(forEach publicClubs showClub)
         .PrivateClubs(forEach privateClubs showClub)
+        .OtherClubs(forEach model.otherClubs showClub)
         .Elt()
 
 let view (model: Model) dispatch =

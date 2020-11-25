@@ -112,7 +112,8 @@ type CreateClubPayload = { name: string }
 
 type ClubService =
     { ``get-clubs``: unit -> Async<string>
-      ``create-club``: CreateClubPayload -> Async<HttpStatusCode> }
+      ``create-club``: CreateClubPayload -> Async<HttpStatusCode>
+      ``get-other-clubs``: unit -> Async<string> }
     interface IRemoteService with
         member this.BasePath = "/clubs"
 
@@ -196,4 +197,10 @@ let getClubLinksByTag (timonService, queryParams: GetClubLinkByTagsParams) =
     async {
         let! resp = timonService.linkService.``get-club-links-by-tag`` queryParams
         return GetClubLinksResultProvider.Parse resp
+    }
+
+let getOtherClubs timonService =
+    async {
+        let! resp = timonService.clubService.``get-other-clubs`` ()
+        return ClubViewProvider.Parse resp
     }

@@ -25,13 +25,15 @@ type Model =
       authentication: AuthState
       isSaving: bool
       isLoading: bool
-      clubId: ClubId }
+      clubId: ClubId
+      isReady: bool }
     static member Default =
         { links = Array.empty
           authentication = AuthState.NotTried
           isSaving = false
           isLoading = true
-          clubId = Guid.Empty }
+          clubId = Guid.Empty
+          isReady = false }
 
 type ClubLoadListParams = bool * ClubName * ClubId * ChannelName * ChannelId * int
 type ClubLoadListByTermParams = ClubId * string * int
@@ -106,7 +108,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
     | OnLoadClubLinks data, _ ->
         let linkViewFormList = mapClubLinksToView data
 
-        { model with links = linkViewFormList }, Cmd.none
+        { model with links = linkViewFormList; isReady = true }, Cmd.none
 
     | LoadClubLinks (arg: ClubLoadListParams), _ ->
 

@@ -11,6 +11,7 @@ open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 open Bolero.Html
 open Microsoft.JSInterop
+open Blazored.LocalStorage
 
 
 type Model =
@@ -51,7 +52,12 @@ type Message =
   | LoadLinksBySearch of string * int
   | UpdateChannelId of ChannelId
 
-let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
+let update (jsRuntime: IJSRuntime)
+           (timonService: TimonService)
+           (localStorage: ILocalStorageService)
+           (message: Message)
+           (model: Model) =
+
   match message, model with
   | LoadChannels, _ ->
     let cmd =
@@ -105,14 +111,14 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
       RecentTagsMenu.Message.LoadLinks (tag, activeSection)
 
     let recentTagsMenuModel, cmd =
-      RecentTagsMenu.update msg model.recentTagsMenuModel
+      RecentTagsMenu.update localStorage msg model.recentTagsMenuModel
 
     let channelMenuModel = { model.channelMenuModel with activeSection = activeSection }
 
     let recentSearchMenuModel = { model.recentSearchMenuModel with activeSection = activeSection }
 
     let cmdBatch =
-      [ cmd; Cmd.ofMsg (LoadLinksByTag(tag, 0)) ]
+      [ Cmd.map RecentTagsMenuMsg cmd; Cmd.ofMsg (LoadLinksByTag(tag, 0)) ]
 
     { model with
         recentTagsMenuModel = recentTagsMenuModel
@@ -120,12 +126,20 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
         recentSearchMenuModel = recentSearchMenuModel
         activeMenuSection = activeSection }, Cmd.batch cmdBatch
 
+  | RecentTagsMenuMsg msg, _ ->
+
+      let recentTagsMenuModel, cmd =
+        RecentTagsMenu.update localStorage msg model.recentTagsMenuModel
+
+      { model with
+          recentTagsMenuModel = recentTagsMenuModel }, Cmd.map RecentTagsMenuMsg cmd
+
   | RecentSearchMenuMsg (RecentSearchMenu.Message.LoadLinks (term, activeSection)), _ ->
     let msg =
       RecentSearchMenu.Message.LoadLinks (term, activeSection)
 
     let recentSearchMenuModel, _ =
-      RecentSearchMenu.update model.recentSearchMenuModel msg
+      RecentSearchMenu.update localStorage msg model.recentSearchMenuModel
 
     let channelMenuModel = { model.channelMenuModel with activeSection = activeSection }
     let recentTagsMenuModel = { model.recentTagsMenuModel with activeSection = activeSection }
@@ -135,18 +149,25 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
         channelMenuModel = channelMenuModel
         recentTagsMenuModel = recentTagsMenuModel }, Cmd.ofMsg (LoadLinksBySearch(term, 0))
 
+  | RecentSearchMenuMsg msg, _ ->
+      let recentSearchMenuModel, cmd =
+        RecentSearchMenu.update localStorage msg model.recentSearchMenuModel
+
+      { model with
+          recentSearchMenuModel = recentSearchMenuModel }, Cmd.map RecentSearchMenuMsg cmd
+
   | LoadLinks (_, _, channelId, _), _ ->
     let channelMenuModel = { model.channelMenuModel with activeChannelId = channelId }
     { model with channelId = channelId; activeMenuSection = MenuSection.Channel; channelMenuModel = channelMenuModel } , Cmd.none
 
   | LoadLinksByTag (tag, _), _ ->
     let msg = RecentTagsMenu.Message.LoadLinks (tag, MenuSection.Tag)
-    let recentTagsMenuModel, _ = RecentTagsMenu.update msg model.recentTagsMenuModel
+    let recentTagsMenuModel, _ = RecentTagsMenu.update localStorage msg model.recentTagsMenuModel
     { model with tag = tag; activeMenuSection = MenuSection.Tag; recentTagsMenuModel = recentTagsMenuModel }, Cmd.none
 
   | LoadLinksBySearch (term, _), _ ->
     let msg = RecentSearchMenu.Message.LoadLinks (term, MenuSection.Search)
-    let recentSearchMenuModel, _ = RecentSearchMenu.update model.recentSearchMenuModel msg
+    let recentSearchMenuModel, _ = RecentSearchMenu.update localStorage msg model.recentSearchMenuModel
 
     { model with term = term; activeMenuSection = MenuSection.Search; recentSearchMenuModel = recentSearchMenuModel }, Cmd.none
 

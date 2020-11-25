@@ -364,7 +364,22 @@ type ClubService(ctx: IRemoteContext,
     let endpoint, protector = getCommons config dataProvider
 
     override this.Handler =
-        { ``get-clubs`` =
+        {
+            ``get-other-clubs`` =
+                ctx.Authorize
+                <| fun () ->
+                    async {
+                        let! authToken = getToken ctx protector endpoint
+
+                        return httpAsync {
+                                   GET(sprintf "%s/clubs/others" endpoint)
+                                   Authorization(sprintf "Bearer %s" authToken)
+                               }
+                               |> Async.RunSynchronously
+                               |> toText
+                    }
+
+            ``get-clubs`` =
               ctx.Authorize
               <| fun () ->
                   async {
@@ -378,7 +393,7 @@ type ClubService(ctx: IRemoteContext,
                              |> toText
                   }
 
-          ``create-club`` =
+            ``create-club`` =
               ctx.Authorize
               <| fun payload ->
                   async {

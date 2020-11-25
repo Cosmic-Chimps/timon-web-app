@@ -12,12 +12,14 @@ type Model =
     { channels: ChannelView array
       authentication: AuthState
       activeChannelId: Guid
-      activeSection: MenuSection }
+      activeSection: MenuSection
+      isReady: bool }
     static member Default =
         { channels = Array.empty
           authentication = AuthState.NotTried
           activeChannelId = Guid.Empty
-          activeSection = MenuSection.Channel }
+          activeSection = MenuSection.Channel
+          isReady = false }
 
 type Message =
     | OnChannelsLoaded of ChannelView array
@@ -26,7 +28,7 @@ type Message =
 let update (message: Message) model =
     match message with
     | OnChannelsLoaded channels ->
-        { model with channels = channels }, Cmd.none
+        { model with channels = channels; isReady = true }, Cmd.none
     | LoadLinks (activeChannelId, _, activeMenuSection) ->
         { model with activeChannelId = activeChannelId; activeSection = activeMenuSection}, Cmd.none
 

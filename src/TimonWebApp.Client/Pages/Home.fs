@@ -27,7 +27,8 @@ type Model =
       tagName: string
       showNext: bool
       term: string
-      activeMenuSection: MenuSection }
+      activeMenuSection: MenuSection
+      isReady: bool }
     static member Default =
         { linkViewListModel = LinkViewList.Model.Default
           clubLinkViewListModel = ClubLinkViewList.Model.Default
@@ -43,7 +44,8 @@ type Model =
           term = String.Empty
           activeMenuSection = MenuSection.Channel
           clubName = String.Empty
-          clubId = Guid.Empty }
+          clubId = Guid.Empty
+          isReady = false }
 
 type Message =
     | LinksLoaded of GetLinksResult
@@ -57,8 +59,8 @@ type Message =
     | AddLinkBoxMsg of AddLinkBox.Message
     | LinkViewItemMsg of LinkViewList.Message
     | ClubLinkViewItemMsg of ClubLinkViewList.Message
-    | RecentTagsUpdated of string list
-    | RecentSearchUpdated of string list
+    // | RecentTagsUpdated of string list
+    // | RecentSearchUpdated of string list
     | SearchBoxMsg of SearchBox.Message
     | HomeSidebarMsg of HomeSidebar.Message
     | ClubSidebarMsg of ClubSidebar.Message
@@ -67,99 +69,6 @@ let init (_: IJSRuntime)  =
     Model.Default, Cmd.ofMsg (LoadLinks(0))
 
 
-let updateTagsLocalStorage ((localStorage: ILocalStorageService), (model: Model)) =
-    async {
-        let key = "timon_recent_tags"
-
-        let! exists =
-            localStorage.ContainKeyAsync(key).AsTask()
-            |> Async.AwaitTask
-
-        match exists with
-        | false ->
-            match model.tagName <> String.Empty with
-            | false -> return []
-            | true ->
-                localStorage.SetItemAsync<string list>(key, [ model.tagName ]).AsTask()
-                |> Async.AwaitTask
-                |> ignore
-
-                return [ model.tagName ]
-        | true ->
-            let! recentTagsJson =
-                localStorage.GetItemAsStringAsync(key).AsTask()
-                |> Async.AwaitTask
-
-            let recentTags = Json.deserialize (recentTagsJson)
-
-            match model.tagName <> String.Empty with
-            | false -> return recentTags
-            | true ->
-                return recentTags
-                       |> List.tryFind (fun tag -> tag = model.tagName)
-                       |> fun found ->
-                           match found with
-                           | Some _ -> recentTags
-                           | None _ ->
-                               let recentTags' =
-                                   match recentTags.Length + 1 > 9 with
-                                   | false -> [ model.tagName ] @ recentTags
-                                   | true ->
-                                       [ model.tagName ]
-                                       @ recentTags.[..recentTags.Length - 2]
-
-                               localStorage.SetItemAsync<string list>(key, recentTags').AsTask()
-                               |> Async.AwaitTask
-                               |> ignore
-                               recentTags'
-    }
-
-let updateSearchLocalStorage ((localStorage: ILocalStorageService), (model: Model)) =
-    async {
-        let key = "timon_recent_search"
-
-        let! exists =
-            localStorage.ContainKeyAsync(key).AsTask()
-            |> Async.AwaitTask
-
-        match exists with
-        | false ->
-            match model.term <> String.Empty with
-            | false -> return []
-            | true ->
-                localStorage.SetItemAsync<string list>(key, [ model.term ]).AsTask()
-                |> Async.AwaitTask
-                |> ignore
-
-                return [ model.term ]
-        | true ->
-            let! recentSearchJson =
-                localStorage.GetItemAsStringAsync(key).AsTask()
-                |> Async.AwaitTask
-
-            let recentSearch = Json.deserialize (recentSearchJson)
-
-            match model.term <> String.Empty with
-            | false -> return recentSearch
-            | true ->
-                return recentSearch
-                       |> List.tryFind (fun tag -> tag = model.term)
-                       |> fun found ->
-                           match found with
-                           | Some _ -> recentSearch
-                           | None _ ->
-                               let recentSearch' =
-                                   match recentSearch.Length + 1 > 9 with
-                                   | false -> [ model.term ] @ recentSearch
-                                   | true ->
-                                       [ model.term ]
-                                       @ recentSearch.[..recentSearch.Length - 2]
-
-                               localStorage.SetItemAsync<string list>(key, recentSearch').AsTask()
-                               |> Async.AwaitTask
-                               |> ignore
-                               recentSearch'
-    }
 
 let mapDataLinksToView (dataLinks: GetLinksResult) =
     dataLinks.Links
@@ -177,24 +86,6 @@ let update (jsRuntime: IJSRuntime)
            (model: Model) =
 
     match message, model with
-    | RecentTagsUpdated recentTags, _ ->
-        let recentTagsMenuModel =
-            { model.homeSidebar.recentTagsMenuModel with tags = recentTags }
-
-        let homeSidebar =
-            { model.homeSidebar with recentTagsMenuModel = recentTagsMenuModel }
-
-        { model with homeSidebar = homeSidebar }, Cmd.none
-
-    | RecentSearchUpdated terms, _ ->
-        let recentSearchMenuModel =
-            { model.homeSidebar.recentSearchMenuModel with terms = terms }
-
-        let homeSidebar =
-            { model.homeSidebar with recentSearchMenuModel = recentSearchMenuModel }
-
-        { model with homeSidebar = homeSidebar }, Cmd.none
-
     | LinksLoaded data, _ ->
         let linkViewFormList = mapDataLinksToView data
 
@@ -206,12 +97,11 @@ let update (jsRuntime: IJSRuntime)
         |> Async.AwaitTask
         |> ignore
 
-        printfn "Home.LinksLoaded %O" (linkViewListModel)
-
         { model with
               linkViewListModel = linkViewListModel
               page = data.Page
-              showNext = data.ShowNext }, Cmd.none
+              showNext = data.ShowNext
+              isReady = true }, Cmd.none
 
     | LoadLinks (page), _ ->
         let queryParams: GetLinkParams = { page = page }
@@ -262,18 +152,10 @@ let update (jsRuntime: IJSRuntime)
         let linksCmd =
             Cmd.OfAsync.either getLinksByTag (timonService, queryParams) LinksLoaded raise
 
-        // let recentTagsMenuModel =
-        //     { model.homeSidebar.recentTagsMenuModel with activeTag = tag }
-
-        // let homeSidebar =
-        //     { model.homeSidebar with recentTagsMenuModel = recentTagsMenuModel }
-
         { model with
               page = page
               tagName = tag
-              activeMenuSection = MenuSection.Tag },
-            //   homeSidebar = homeSidebar },
-        linksCmd
+              activeMenuSection = MenuSection.Tag }, linksCmd
 
     | LoadClubLinksByTag (tag, page), _ ->
         let arg = ( model.clubId, tag, page )
@@ -287,7 +169,7 @@ let update (jsRuntime: IJSRuntime)
         let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
         let homeSidebarMessage = HomeSidebar.Message.LoadLinksByTag (tag, page)
-        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService homeSidebarMessage model.homeSidebar
+        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService localStorage homeSidebarMessage model.homeSidebar
 
         let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
 
@@ -311,7 +193,7 @@ let update (jsRuntime: IJSRuntime)
         let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
         let homeSidebarMessage = HomeSidebar.Message.LoadLinksBySearch (term, page)
-        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService homeSidebarMessage model.homeSidebar
+        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService localStorage homeSidebarMessage model.homeSidebar
 
         let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
 
@@ -388,11 +270,14 @@ let update (jsRuntime: IJSRuntime)
                   tagName = model.tagName
                   clubId = model.clubId }
 
-        let cmdUpdateRecentTags =
-            Cmd.OfAsync.either updateTagsLocalStorage (localStorage, model) RecentTagsUpdated raise
+        let loadTagsMessage = HomeSidebar.Message.RecentTagsMenuMsg (RecentTagsMenu.Message.LoadTags)
+        let homeSidebarModel, cmdUpdateRecentTags = HomeSidebar.update jsRuntime timonService localStorage loadTagsMessage model.homeSidebar
 
-        let cmdUpdateRecentSearch =
-            Cmd.OfAsync.either updateSearchLocalStorage (localStorage, model) RecentSearchUpdated raise
+        let model' = { model with homeSidebar = homeSidebarModel }
+
+
+        let loadTermsMessage = HomeSidebar.Message.RecentSearchMenuMsg (RecentSearchMenu.Message.LoadTerms)
+        let homeSidebarModel', cmdUpdateRecentTerms = HomeSidebar.update jsRuntime timonService localStorage loadTermsMessage model'.homeSidebar
 
         jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
         |> Async.AwaitTask
@@ -401,11 +286,12 @@ let update (jsRuntime: IJSRuntime)
         { model with
             clubLinkViewListModel = clubLinkViewListModel
             addLinkBoxModel = addLinkBoxModel
+            homeSidebar = homeSidebarModel'
             page = data.Page
             // homeSidebar = homeSidebar
             showNext = data.ShowNext },
-        Cmd.batch [ cmdUpdateRecentTags
-                    cmdUpdateRecentSearch ]
+                            Cmd.batch [ Cmd.map HomeSidebarMsg cmdUpdateRecentTags
+                                        Cmd.map HomeSidebarMsg cmdUpdateRecentTerms ]
 
     | ClubLinkViewItemMsg msg, _ ->
         let m, cmd =
@@ -444,7 +330,7 @@ let update (jsRuntime: IJSRuntime)
     | HomeSidebarMsg (HomeSidebar.Message.LoadLinks (shouldLoadChannels, channelName, channelId, page ) ), _ ->
 
         let msg = HomeSidebar.Message.LoadLinks (shouldLoadChannels, channelName, channelId, page)
-        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
+        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
 
         let loadClubLinksArgs = shouldLoadChannels, model.clubName, model.clubId, channelName, channelId, page
         let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinks loadClubLinksArgs)]
@@ -454,7 +340,7 @@ let update (jsRuntime: IJSRuntime)
     | HomeSidebarMsg (HomeSidebar.Message.LoadLinksByTag (tag, page) ), _ ->
 
         let msg = HomeSidebar.Message.LoadLinksByTag (tag, page)
-        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
+        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
 
         let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinksByTag (tag, page))]
 
@@ -462,14 +348,14 @@ let update (jsRuntime: IJSRuntime)
 
     | HomeSidebarMsg (HomeSidebar.Message.LoadLinksBySearch (term, page) ), _ ->
         let msg = HomeSidebar.Message.LoadLinksBySearch (term, page)
-        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
+        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
 
         let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinksSearch (term, page))]
 
         { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
 
     | HomeSidebarMsg msg, _ ->
-        let m, cmd = HomeSidebar.update jsRuntime timonService msg model.homeSidebar
+        let m, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
 
         { model with homeSidebar = m}, Cmd.map HomeSidebarMsg cmd
 
@@ -536,100 +422,108 @@ let nextButton (model: Model) dispatch =
         ]
 
 let view authState model dispatch =
-    let items =
-        match authState with
-        | AuthState.Success ->
-            ClubLinkViewList.view authState model.clubLinkViewListModel (ClubLinkViewItemMsg >> dispatch)
-        | _ ->
-            LinkViewList.view model.linkViewListModel (LinkViewItemMsg >> dispatch)
+    printfn "1 %O" model.clubLinkViewListModel.isReady
+    printfn "2 %O" model.homeSidebar.channelMenuModel.isReady
+    printfn "3 %O" model.homeSidebar.recentSearchMenuModel.isReady
+    printfn "4 %O" model.homeSidebar.recentSearchMenuModel.isReady
+    if not (model.clubLinkViewListModel.isReady && model.homeSidebar.channelMenuModel.isReady &&
+            model.homeSidebar.recentSearchMenuModel.isReady && model.homeSidebar.recentSearchMenuModel.isReady) then
+        ComponentsTemplate.LoadingTemplate().Elt()
+    else
+        let items =
+            match authState with
+            | AuthState.Success ->
+                ClubLinkViewList.view authState model.clubLinkViewListModel (ClubLinkViewItemMsg >> dispatch)
+            | _ ->
+                LinkViewList.view model.linkViewListModel (LinkViewItemMsg >> dispatch)
 
-    let addLinkBoxHole =
-        AddLinkBox.view authState (model.addLinkBoxModel) (AddLinkBoxMsg >> dispatch)
+        let addLinkBoxHole =
+            AddLinkBox.view authState (model.addLinkBoxModel) (AddLinkBoxMsg >> dispatch)
 
-    let homeSidebarHole =
-        HomeSidebar.view authState (model.homeSidebar) (HomeSidebarMsg >> dispatch)
+        let homeSidebarHole =
+            HomeSidebar.view authState (model.homeSidebar) (HomeSidebarMsg >> dispatch)
 
-    let previousButton = previousButton model dispatch
-    let nextButton = nextButton model dispatch
+        let previousButton = previousButton model dispatch
+        let nextButton = nextButton model dispatch
 
-    let title =
-        match authState with
-        | AuthState.Success ->
-            match model.activeMenuSection with
-            | Channel ->
-                cond (String.IsNullOrEmpty(model.channelName))
-                <| function
-                    | true -> empty
-                    | false ->
-                        h3 [ attr.``class``
-                             <| String.concat
-                                 " "
-                                    [ Bulma.``is-3``
-                                      Bulma.``is-italic``
-                                      Bulma.title ] ] [
-                            text "channel: "
-                            span [ attr.``class``
-                                   <| String.concat
-                                       " "
-                                          [ Bulma.``has-text-weight-light``
-                                            Bulma.``is-italic`` ] ] [
-                                    text model.channelName
-                            ]
-                ]
-            | Tag ->
-                h3 [ attr.``class``
-                     <| String.concat
-                         " "
-                            [ Bulma.``is-3``
-                              Bulma.``is-italic``
-                              Bulma.title ] ] [
-                    text "tag: "
-                    span [ attr.``class``
-                           <| String.concat
-                               " "
-                                  [ Bulma.``has-text-weight-light``
-                                    Bulma.``is-italic`` ] ] [
-                        text model.tagName
+        let title =
+            match authState with
+            | AuthState.Success ->
+                match model.activeMenuSection with
+                | Channel ->
+                    cond (String.IsNullOrEmpty(model.channelName))
+                    <| function
+                        | true -> empty
+                        | false ->
+                            h3 [ attr.``class``
+                                 <| String.concat
+                                     " "
+                                        [ Bulma.``is-3``
+                                          Bulma.``is-italic``
+                                          Bulma.title ] ] [
+                                text "channel: "
+                                span [ attr.``class``
+                                       <| String.concat
+                                           " "
+                                              [ Bulma.``has-text-weight-light``
+                                                Bulma.``is-italic`` ] ] [
+                                        text model.channelName
+                                ]
                     ]
-                ]
-            | Search ->
-                h3 [ attr.``class``
-                     <| String.concat
-                         " "
-                            [ Bulma.``is-3``
-                              Bulma.``is-italic``
-                              Bulma.title ] ] [
-                    text "search: "
-                    span [ attr.``class``
-                           <| String.concat
-                               " "
-                                  [ Bulma.``has-text-weight-light``
-                                    Bulma.``is-italic`` ] ] [
-                        text model.term
+                | Tag ->
+                    h3 [ attr.``class``
+                         <| String.concat
+                             " "
+                                [ Bulma.``is-3``
+                                  Bulma.``is-italic``
+                                  Bulma.title ] ] [
+                        text "tag: "
+                        span [ attr.``class``
+                               <| String.concat
+                                   " "
+                                      [ Bulma.``has-text-weight-light``
+                                        Bulma.``is-italic`` ] ] [
+                            text model.tagName
+                        ]
                     ]
-                ]
-        | _ -> empty
+                | Search ->
+                    h3 [ attr.``class``
+                         <| String.concat
+                             " "
+                                [ Bulma.``is-3``
+                                  Bulma.``is-italic``
+                                  Bulma.title ] ] [
+                        text "search: "
+                        span [ attr.``class``
+                               <| String.concat
+                                   " "
+                                      [ Bulma.``has-text-weight-light``
+                                        Bulma.``is-italic`` ] ] [
+                            text model.term
+                        ]
+                    ]
+            | _ -> empty
 
-    let searchBox = SearchBox.view authState model.searchBoxModel (SearchBoxMsg >> dispatch)
+        let searchBox = SearchBox.view authState model.searchBoxModel (SearchBoxMsg >> dispatch)
 
-    let emptyLinksHole =
-        match authState with
-        | AuthState.Success -> empty
-        | _ -> ComponentsTemplate.EmptyListBanner().Elt()
+        let emptyLinksHole =
+            match authState with
+            | AuthState.Success -> empty
+            | _ -> ComponentsTemplate.EmptyListBanner().Elt()
 
-    let clubSidebar =
-        match authState with
-        | AuthState.Success -> ClubSidebar.view model.clubSidebarModel (ClubSidebarMsg >> dispatch)
-        | _ -> empty
+        let clubSidebar =
+            match authState with
+            | AuthState.Success -> ClubSidebar.view model.clubSidebarModel (ClubSidebarMsg >> dispatch)
+            | _ -> empty
 
-    HomeTemplate()
-        .ClubSidebar(clubSidebar)
-        .LinkListHole(items)
-        .MenuSidebar(homeSidebarHole)
-        .AddLinkBoxHole(addLinkBoxHole)
-        .LinksTitleSection(title)
-        .PreviousButton(previousButton)
-        .NextButton(nextButton)
-        .SearchBox(searchBox)
-        .EmptyLinksHole(emptyLinksHole)
-        .Elt()
+        HomeTemplate()
+            .ClubSidebar(clubSidebar)
+            .LinkListHole(items)
+            .MenuSidebar(homeSidebarHole)
+            .AddLinkBoxHole(addLinkBoxHole)
+            .LinksTitleSection(title)
+            .PreviousButton(previousButton)
+            .NextButton(nextButton)
+            .SearchBox(searchBox)
+            .EmptyLinksHole(emptyLinksHole)
+            .Elt()

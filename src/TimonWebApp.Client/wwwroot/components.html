@@ -184,18 +184,27 @@
             </div>
             <aside class="menu">
                 <p class="menu-label">
-                    Public
+                    Your Clubs
                 </p>
                 <ul class="menu-list">
-                    ${PublicClubs}
-                    <!-- <li><a>#${Name}</a></li> -->
+                    <li>Public</li>
+                    <ul>
+                        ${PublicClubs}
+                    </ul>
+                </ul>
+                <ul class="menu-list">
+                    <li>Private</li>
+                    <ul>
+                        ${PrivateClubs}
+                    </ul>
                 </ul>
                 <p class="menu-label">
-                    Private
+                    Other Clubs
                 </p>
                 <ul class="menu-list">
-                    ${PrivateClubs}
-                    <!-- <li><a>#${Name}</a></li> -->
+                    <ul>
+                        ${OtherClubs}
+                    </ul>
                 </ul>
             </aside>
         </section>
@@ -204,4 +213,18 @@
 
 <template id="ClubLink">
     <li><a onClick="${ChangeClub}">${Name}</a></li>
+</template>
+
+<template id="LoadingTemplate">
+    <!-- <div class="pageloader is-active"><span class="title">Loading</span></div> -->
+    <div class="section hero is-primary is-fullheight">
+        <div class="hero-body">
+            <div class="container has-text-centered">
+                <progress class="progress is-large is-info" max="100">25%</progress>
+                <h1 class="title">
+                    Loading
+                </h1>
+            </div>
+        </div>
+    </div>
 </template>

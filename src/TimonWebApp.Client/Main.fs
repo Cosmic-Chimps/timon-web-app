@@ -14,6 +14,7 @@ open TimonWebApp.Client.Pages
 open TimonWebApp.Client.Services
 open TimonWebApp.Client
 open TimonWebApp.Client.Common
+open TimonWebApp.Client.Pages.Components
 
 /// Routing endpoints definition.
 type Page =
@@ -39,20 +40,20 @@ type Message =
 
 /// The Elmish application's model.
 type Model =
-    { Page: Page
-      State: State
-      Error: string option
-      SignedInAs: option<string>
-      SignInFailed: bool
-      BufferedCommand: Cmd<Message> }
+    { page: Page
+      state: State
+      error: string option
+      signedInAs: option<string>
+      signInFailed: bool
+      bufferedCommand: Cmd<Message> }
 
 let init =
-    { Page = Start
-      Error = None
-      SignedInAs = None
-      SignInFailed = false
-      BufferedCommand = Cmd.none
-      State =
+    { page = Start
+      error = None
+      signedInAs = None
+      signInFailed = false
+      bufferedCommand = Cmd.none
+      state =
           { Authentication = AuthState.NotTried
             Configuration = ConfigurationState.NotInitialized } },
     Cmd.none
@@ -60,14 +61,19 @@ let init =
 
 let initPage init (model: Model) msg page =
     let pageModel, cmd = init
-    let page = { Model = pageModel } |> page
-    { model with Page = page }, Cmd.map msg cmd
+
+    let page =
+        { Model = pageModel }
+        |> page
+
+    { model with page = page }, Cmd.map msg cmd
 
 let initLogin (jsRunTime: IJSRuntime) model =
     initPage (Login.init jsRunTime) model LoginMsg Login
 
 let initHome (jsRunTime: IJSRuntime) model =
-    initPage (Home.init jsRunTime) model HomeMsg (fun pageModel -> Home(pageModel))
+    initPage (Home.init jsRunTime model.state.Authentication) model HomeMsg (fun pageModel ->
+        Home(pageModel))
 
 let initSignUp (jsRunTime: IJSRuntime) model =
     initPage (SignUp.init jsRunTime) model SignUpMsg SignUp
@@ -92,122 +98,155 @@ let update (jsRuntime: IJSRuntime)
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel
         { model with
-              Page = pageFn ({ Model = subModel }) },
+              page = pageFn ({ Model = subModel }) },
         Cmd.map msgFn cmd
 
-    //    let genericUpdateWithCommon update subModel msg msgFn pageFn =
-//        let subModel, cmd, (commonCommand: Cmd<Common.Message>) = update msg (subModel, model.State)
-//        if commonCommand |> List.isEmpty then
-//            { model with
-//                  Page = pageFn ({ Model = subModel }) },
-//            Cmd.map msgFn cmd
-//        else
-//            let m =
-//                { model with
-//                      Page = pageFn ({ Model = subModel }) }
-//
-//            m, Cmd.map CommonMessage commonCommand
-
-    match message, model.Page with
+    match message, model.page with
     | RemoveBuffer, _ ->
         { model with
-              BufferedCommand = Cmd.none },
+              bufferedCommand = Cmd.none },
         Cmd.none
 
     | Rendered, _ ->
         let cmdGetUserName =
-            Cmd.OfAuthorized.either timonService.authService.``get-user-name`` () RecvSignedInAs Error
+            Cmd.OfAuthorized.either
+                timonService.authService.``get-user-name``
+                ()
+                RecvSignedInAs
+                Error
 
         model, cmdGetUserName
 
     | RecvSignedInAs option, _ ->
-        //        let cmdSetPage =  Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadLinks (true, "")))
         let cmdSetPage = Cmd.none
         match option with
         | Some _ ->
             let state =
-                { model.State with
+                { model.state with
                       Authentication = AuthState.Success }
 
             let m =
                 { model with
-                      SignedInAs = option
-                      State = state }
+                      signedInAs = option
+                      state = state }
 
-            let cmd = Cmd.OfAsync.either getClubs timonService OnClubsLoaded Error
+            let cmd =
+                Cmd.OfAsync.either getClubs timonService OnClubsLoaded Error
+
             m, cmd
-
-            // match model.Page with
-            // | Home _ -> m, Cmd.none
-            // | _ -> m, cmdSetPage
 
         | None _ -> model, cmdSetPage
 
     | OnClubsLoaded clubs, _ ->
-        let club = clubs |> Array.head
-        let searchBoxModel = { Home.Model.Default.searchBoxModel with clubName = club.Name }
-        let homeModel = { Home.Model.Default with clubName = club.Name; clubId = club.Id; searchBoxModel = searchBoxModel }
-        { model with
-            Page = Home({ Model = homeModel }) },
-        Cmd.map HomeMsg (Cmd.ofMsg (Home.Message.LoadClubLinks(true, club.Name, club.Id, String.Empty, Guid.Empty, 0)))
+        let clubHead = clubs |> Seq.tryHead
+
+        match clubHead with
+        | None ->
+            { model with
+                  page = Home({ Model = Home.Model.Default }) },
+            Cmd.map
+                HomeMsg
+                (Cmd.map
+                    Home.AnonymousLinkViewListMsg
+                     (Cmd.ofMsg (AnonymousLinkViewList.Message.LoadLinks(0))))
+
+        | Some club ->
+            let searchBoxModel =
+                { Home.Model.Default.searchBoxModel with
+                      clubName = club.Name }
+
+            let clubSidebarModel =
+                { Home.Model.Default.clubSidebarModel with
+                      clubs = clubs }
+
+            let homeModel =
+                { Home.Model.Default with
+                      clubName = club.Name
+                      clubId = club.Id
+                      searchBoxModel = searchBoxModel
+                      clubSidebarModel = clubSidebarModel }
+
+            { model with
+                  page = Home({ Model = homeModel }) },
+            Cmd.map
+                HomeMsg
+                (Cmd.ofMsg
+                    (Home.Message.LoadClubLinks
+                        (true, club.Name, club.Id, String.Empty, Guid.Empty, 0)))
 
     | SignOutRequested, _ -> model, signOut jsRuntime timonService
 
     | SignedOut, _ ->
         let state =
-            { model.State with
+            { model.state with
                   Authentication = AuthState.Failed }
 
-        let cmdSetPage =
-            Cmd.ofMsg (SetPage(Home(Router.noModel)))
+        let cmdSetPage = Cmd.ofMsg (SetPage(Start))
 
-        { model with State = state }, cmdSetPage
+        { model with state = state }, cmdSetPage
 
     | HomeMsg msg, Home (homePageModel) ->
-        genericUpdate (Home.update jsRuntime timonService localStorage) (homePageModel.Model) msg HomeMsg (fun pm ->
-            Home(pm))
+        genericUpdate (Home.update jsRuntime timonService localStorage)
+            (homePageModel.Model) msg HomeMsg (fun pm -> Home(pm))
 
     | LoginMsg (Login.Message.LoginSuccess authentication), Login loginModel ->
-        let loginModel, _ = Login.update timonService (Login.Message.LoginSuccess authentication) loginModel.Model
+        let loginModel, _ =
+            Login.update
+                timonService
+                (Login.Message.LoginSuccess authentication)
+                loginModel.Model
 
-        let model' = { model with Page = Login({ Model = loginModel }) }
+        let model' =
+            { model with
+                  page = Login({ Model = loginModel }) }
 
         match authentication with
         | Some _ ->
             let state =
-                { model'.State with
+                { model'.state with
                       Authentication = AuthState.Success }
 
-            let cmdSetPage  = Cmd.OfAsync.either getClubs timonService OnClubsLoaded Error
+            let cmdSetPage =
+                Cmd.OfAsync.either getClubs timonService OnClubsLoaded Error
 
             { model' with
-                  SignedInAs = authentication
-                  State = state },
+                  signedInAs = authentication
+                  state = state },
             cmdSetPage
         | None _ -> model', Cmd.none
 
     | LoginMsg msg, Login loginModel ->
         let m, cmd =
             Login.update timonService msg loginModel.Model
+
         { model with
-              Page = Login({ Model = m }) },
+              page = Login({ Model = m }) },
         Cmd.map LoginMsg cmd
 
-    | SignUpMsg (SignUp.Message.SignUpSuccess authentication), SignUp signUpModel ->
-        let signUpModel, _ = SignUp.update timonService (Pages.SignUp.Message.SignUpSuccess authentication) signUpModel.Model
+    | SignUpMsg (SignUp.Message.SignUpSuccess authentication),
+      SignUp signUpModel ->
+        let signUpModel, _ =
+            SignUp.update
+                timonService
+                (Pages.SignUp.Message.SignUpSuccess authentication)
+                signUpModel.Model
 
-        let model' = { model with Page = SignUp({ Model = signUpModel }) }
+        let model' =
+            { model with
+                  page = SignUp({ Model = signUpModel }) }
+
         match authentication with
         | Some _ ->
             let state =
-                { model'.State with
+                { model'.state with
                       Authentication = AuthState.Success }
 
-            let cmdSetPage  = Cmd.OfAsync.either getClubs timonService OnClubsLoaded Error
+            let cmdSetPage =
+                Cmd.OfAsync.either getClubs timonService OnClubsLoaded Error
 
             { model' with
-                  SignedInAs = authentication
-                  State = state },
+                  signedInAs = authentication
+                  state = state },
             cmdSetPage
         | None _ -> model', Cmd.none
 
@@ -216,14 +255,14 @@ let update (jsRuntime: IJSRuntime)
             SignUp.update timonService msg signUpModel.Model
 
         { model with
-              Page = SignUp({ Model = m }) },
+              page = SignUp({ Model = m }) },
         Cmd.map SignUpMsg cmd
 
     | SetPage (Page.Login _), _ -> initLogin jsRuntime model
 
     | SetPage (Page.SignUp _), _ -> initSignUp jsRuntime model
 
-    | SetPage (Page.Start), _ -> initHome  jsRuntime model
+    | SetPage (Page.Start), _ -> initHome jsRuntime model
 
     //    | SetPage page -> { model with page = page }
 
@@ -243,12 +282,12 @@ let update (jsRuntime: IJSRuntime)
 let defaultModel (jsRuntime: IJSRuntime) =
     function
     | Login model -> Router.definePageModel model Login.Model.Default
-    | Home (model) ->
-        Router.definePageModel model Home.Model.Default
+    | Home (model) -> Router.definePageModel model Home.Model.Default
     | SignUp model -> Router.definePageModel model SignUp.Model.Default
+    | Start -> ()
 
 let buildRouter (jsRuntime: IJSRuntime) =
-    Router.inferWithModel SetPage (fun m -> m.Page) (defaultModel jsRuntime)
+    Router.inferWithModel SetPage (fun m -> m.page) (defaultModel jsRuntime)
 
 type NavbarTemplate = Template<"wwwroot/navbar.html">
 
@@ -256,7 +295,7 @@ type NavbarEndItemsDisplay() =
     inherit ElmishComponent<Model, Message>()
 
     override this.View model dispatch =
-        cond model.State.Authentication
+        cond model.state.Authentication
         <| function
         | AuthState.NotTried
         | AuthState.Failed ->
@@ -273,57 +312,78 @@ type NavbarEndItemsDisplay() =
                 ]
             ]
         | AuthState.Success ->
-            concat [ div [ attr.``class``
-                           <| String.concat
-                               " "
-                                  [ Bulma.``navbar-item``
-                                    Bulma.``has-dropdown``
-                                    Bulma.``is-hoverable`` ] ] [
-                         a [ attr.``class`` Bulma.``navbar-link`` ] [
-                             text model.SignedInAs.Value
-                         ]
-                         div [ attr.``class``
-                               <| String.concat
-                                   " "
-                                      [ Bulma.``navbar-dropdown``
-                                        Bulma.``is-right`` ] ] [
-                             a [ attr.``class``
-                                 <| String.concat " " [ Bulma.``navbar-item`` ] ] [
-                                 span [ attr.``class``
-                                        <| String.concat " " [ Bulma.icon; Bulma.``is-small`` ] ] [
-                                     i [ attr.``class``
-                                         <| String.concat " " [ "mdi"; Mdi.``mdi-account`` ] ] []
-                                 ]
-                                 RawHtml "&nbsp;Profile"
-                             ]
-                             hr [ attr.``class``
-                                  <| String.concat " " [ Bulma.``navbar-divider`` ] ]
-                             a [ attr.``class``
-                                 <| String.concat " " [ Bulma.``navbar-item`` ]
-                                 on.click (fun _ -> dispatch SignOutRequested) ] [
-                                 span [ attr.``class``
-                                        <| String.concat " " [ Bulma.icon; Bulma.``is-small`` ] ] [
-                                     i [ attr.``class``
-                                         <| String.concat " " [ "mdi"; Mdi.``mdi-logout`` ] ] []
-                                 ]
-                                 RawHtml "&nbsp;Logout"
-                             ]
-                         ]
-                     ] ]
+            concat [
+                div [ attr.``class``
+                      <| String.concat
+                          " "
+                             [ Bulma.``navbar-item``
+                               Bulma.``has-dropdown``
+                               Bulma.``is-hoverable`` ] ] [
+                    a [ attr.``class`` Bulma.``navbar-link`` ] [
+                        text model.signedInAs.Value
+                    ]
+                    div [ attr.``class``
+                          <| String.concat
+                              " "
+                                 [ Bulma.``navbar-dropdown``
+                                   Bulma.``is-right`` ] ] [
+                        a [ attr.``class``
+                            <| String.concat " " [ Bulma.``navbar-item`` ] ] [
+                            span [ attr.``class``
+                                   <| String.concat
+                                       " "
+                                          [ Bulma.icon; Bulma.``is-small`` ] ] [
+                                i [ attr.``class``
+                                    <| String.concat
+                                        " "
+                                           [ "mdi"; Mdi.``mdi-account`` ] ] []
+                            ]
+                            RawHtml "&nbsp;Profile"
+                        ]
+                        hr [
+                            attr.``class``
+                            <| String.concat " " [ Bulma.``navbar-divider`` ]
+                        ]
+                        a [ attr.``class``
+                            <| String.concat " " [ Bulma.``navbar-item`` ]
+                            on.click (fun _ -> dispatch SignOutRequested) ] [
+                            span [ attr.``class``
+                                   <| String.concat
+                                       " "
+                                          [ Bulma.icon; Bulma.``is-small`` ] ] [
+                                i [ attr.``class``
+                                    <| String.concat
+                                        " "
+                                           [ "mdi"; Mdi.``mdi-logout`` ] ] []
+                            ]
+                            RawHtml "&nbsp;Logout"
+                        ]
+                    ]
+                ]
+            ]
 
 let view (js: IJSRuntime) (mainModel: Model) dispatch =
     let content =
-        cond mainModel.Page
+        cond mainModel.page
         <| function
         | Login (model) -> Login.view js model.Model (LoginMsg >> dispatch)
-        | SignUp (model) -> SignUp.view model.Model (SignUpMsg >> dispatch)
-        | Home (model) -> Home.view mainModel.State.Authentication model.Model (HomeMsg >> dispatch)
+        | SignUp (model) ->
+            SignUp.view
+                model.Model
+                (SignUpMsg
+                 >> dispatch)
+        | Home (model) ->
+            Home.view
+                mainModel.state.Authentication
+                model.Model
+                (HomeMsg >> dispatch)
         | Start -> empty
 
     let navbarEndItemsDisplay =
         ecomp<NavbarEndItemsDisplay, _, _> [] mainModel dispatch
 
-    NavbarTemplate().navbarEndItems(navbarEndItemsDisplay).content(content).Elt()
+    NavbarTemplate().navbarEndItems(navbarEndItemsDisplay).content(content)
+        .Elt()
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()

@@ -9,12 +9,12 @@ open FSharp.Json
 open Microsoft.JSInterop
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages.Components
-open TimonWebApp.Client.Pages.Components.LinkViewList
+open TimonWebApp.Client.Pages.Components.AnonymousLinkViewList
 open TimonWebApp.Client.Services
 
 type Model =
     { addLinkBoxModel: AddLinkBox.Model
-      linkViewListModel: LinkViewList.Model
+      anonymouslinkViewListModel: AnonymousLinkViewList.Model
       clubLinkViewListModel: ClubLinkViewList.Model
       searchBoxModel: SearchBox.Model
       clubSidebarModel: ClubSidebar.Model
@@ -27,10 +27,9 @@ type Model =
       tagName: string
       showNext: bool
       term: string
-      activeMenuSection: MenuSection
-      isReady: bool }
+      activeMenuSection: MenuSection }
     static member Default =
-        { linkViewListModel = LinkViewList.Model.Default
+        { anonymouslinkViewListModel = AnonymousLinkViewList.Model.Default
           clubLinkViewListModel = ClubLinkViewList.Model.Default
           addLinkBoxModel = AddLinkBox.Model.Default
           searchBoxModel = SearchBox.Model.Default
@@ -44,134 +43,159 @@ type Model =
           term = String.Empty
           activeMenuSection = MenuSection.Channel
           clubName = String.Empty
-          clubId = Guid.Empty
-          isReady = false }
+          clubId = Guid.Empty }
 
 type Message =
-    | LinksLoaded of GetLinksResult
-    | LoadLinks of int
+    // | LinksLoaded of GetLinksResult
+    // | LoadLinks of int
     | LoadClubLinks of ClubLinkViewList.ClubLoadListParams
-    | ClubLinksLoaded of ClubListView
     | LoadLinksByTag of string * int
     | LoadClubLinksByTag of string * int
     | LoadClubLinksSearch of string * int
-    | LoadSearch of string * int
     | AddLinkBoxMsg of AddLinkBox.Message
-    | LinkViewItemMsg of LinkViewList.Message
+    | LinkViewItemMsg of AnonymousLinkViewList.Message
     | ClubLinkViewItemMsg of ClubLinkViewList.Message
-    // | RecentTagsUpdated of string list
-    // | RecentSearchUpdated of string list
     | SearchBoxMsg of SearchBox.Message
     | HomeSidebarMsg of HomeSidebar.Message
     | ClubSidebarMsg of ClubSidebar.Message
+    | AnonymousLinkViewListMsg of AnonymousLinkViewList.Message
 
-let init (_: IJSRuntime)  =
-    Model.Default, Cmd.ofMsg (LoadLinks(0))
+let init (_: IJSRuntime) (state: AuthState) =
+    let cmdExecute =
+        match state with
+        | AuthState.Success ->
+            let cmd = Cmd.ofMsg (ClubSidebar.LoadClubs)
+            Cmd.map ClubSidebarMsg cmd
+        | _ ->
+            let cmd =
+                Cmd.ofMsg (AnonymousLinkViewList.LoadLinks(0))
+
+            Cmd.map AnonymousLinkViewListMsg cmd
+
+    Model.Default, cmdExecute
 
 
-
-let mapDataLinksToView (dataLinks: GetLinksResult) =
-    dataLinks.Links
-    |> Seq.map (fun lv ->
-        { view = lv
-          isTagFormOpen = false
-          errorValidateForm = None
-          tagForm = { tags = "" } })
-    |> Seq.toArray
 
 let update (jsRuntime: IJSRuntime)
            (timonService: TimonService)
            (localStorage: ILocalStorageService)
            (message: Message)
-           (model: Model) =
+           (model: Model)
+           =
 
     match message, model with
-    | LinksLoaded data, _ ->
-        let linkViewFormList = mapDataLinksToView data
-
-        let linkViewListModel =
-            { model.linkViewListModel with
-                  links = linkViewFormList }
-
-        jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
-        |> Async.AwaitTask
-        |> ignore
-
-        { model with
-              linkViewListModel = linkViewListModel
-              page = data.Page
-              showNext = data.ShowNext
-              isReady = true }, Cmd.none
-
-    | LoadLinks (page), _ ->
-        let queryParams: GetLinkParams = { page = page }
-
-        let linksCmd =
-            Cmd.OfAsync.either getLinks (timonService, queryParams) LinksLoaded raise
-
-        { model with
-              page = page
-              activeMenuSection = MenuSection.Channel }, linksCmd
-
+    // | LoadLinks page, _ ->
+    //     let
     | LoadClubLinks (arg: ClubLinkViewList.ClubLoadListParams), _ ->
 
-      let shouldLoadChannels, clubName, clubId, channelName, channelId, page = arg
+        let shouldLoadChannels, clubName, clubId, channelName, channelId, page =
+            arg
 
-      let msg = ClubLinkViewList.Message.LoadClubLinks arg
+        let msg =
+            ClubLinkViewList.Message.LoadClubLinks arg
 
-      let clubLinkViewListModel, clubLinkViewListCmd =
-        ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
+        let clubLinkViewListModel, clubLinkViewListCmd =
+            ClubLinkViewList.update
+                jsRuntime
+                timonService
+                msg
+                model.clubLinkViewListModel
 
-      let homeSideBarModel = { model.homeSidebar with clubId = clubId; channelId = channelId }
+        let homeSideBarModel =
+            { model.homeSidebar with
+                  clubId = clubId
+                  channelId = channelId }
 
-      let homeSideBarMsg = Cmd.ofMsg (HomeSidebar.Message.UpdateChannelId channelId)
+        let homeSideBarMsg =
+            Cmd.ofMsg (HomeSidebar.Message.UpdateChannelId channelId)
 
-      let searchBoxMessage = SearchBox.Message.UpdateInputSearchBox String.Empty
-      let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
+        let searchBoxMessage =
+            SearchBox.Message.UpdateInputSearchBox String.Empty
 
-      let batchCmds =
-          [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd; Cmd.map HomeSidebarMsg homeSideBarMsg  ]
-          @ match shouldLoadChannels with
-            | true -> [ Cmd.map HomeSidebarMsg (Cmd.ofMsg HomeSidebar.Message.LoadChannels) ]
-            | false -> [ Cmd.none ]
+        let searchBoxModel, _ =
+            SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
-      { model with
-            page = page
-            clubName = clubName
-            clubId = clubId
-            channelName = channelName
-            channelId = channelId
-            searchBoxModel = searchBoxModel
-            activeMenuSection = MenuSection.Channel
-            clubLinkViewListModel = clubLinkViewListModel
-            homeSidebar = homeSideBarModel }, Cmd.batch batchCmds
+        let clubSidebarMessage =
+            ClubSidebar.Message.SetActiveClubId clubId
 
-    | LoadLinksByTag (tag, page), _ ->
-        let queryParams = { tagName = tag; page = page }
+        let clubSidebarModel, _ =
+            ClubSidebar.update
+                jsRuntime
+                timonService
+                clubSidebarMessage
+                model.clubSidebarModel
 
-        let linksCmd =
-            Cmd.OfAsync.either getLinksByTag (timonService, queryParams) LinksLoaded raise
+        let batchCmds =
+            [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd
+              Cmd.map HomeSidebarMsg homeSideBarMsg ]
+            @ match shouldLoadChannels with
+              | true ->
+                  [ Cmd.map
+                      HomeSidebarMsg
+                        (Cmd.ofMsg HomeSidebar.Message.LoadChannels) ]
+              | false -> [ Cmd.none ]
 
         { model with
               page = page
-              tagName = tag
-              activeMenuSection = MenuSection.Tag }, linksCmd
+              clubName = clubName
+              clubId = clubId
+              channelName = channelName
+              channelId = channelId
+              searchBoxModel = searchBoxModel
+              activeMenuSection = MenuSection.Channel
+              clubLinkViewListModel = clubLinkViewListModel
+              homeSidebar = homeSideBarModel
+              clubSidebarModel = clubSidebarModel },
+        Cmd.batch batchCmds
+
+    // | LoadLinksByTag (tag, page), _ ->
+    //     let queryParams = { tagName = tag; page = page }
+
+    //     let linksCmd =
+    //         Cmd.OfAsync.either
+    //             getLinksByTag
+    //             (timonService, queryParams)
+    //             LinksLoaded
+    //             raise
+
+    //     { model with
+    //           page = page
+    //           tagName = tag
+    //           activeMenuSection = MenuSection.Tag },
+    //     linksCmd
 
     | LoadClubLinksByTag (tag, page), _ ->
-        let arg = ( model.clubId, tag, page )
+        let arg = (model.clubId, tag, page)
 
-        let msg = ClubLinkViewList.Message.LoadClubLinksByTag (arg)
+        let msg =
+            ClubLinkViewList.Message.LoadClubLinksByTag(arg)
 
         let clubLinkViewListModel, clubLinkViewListCmd =
-            ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
+            ClubLinkViewList.update
+                jsRuntime
+                timonService
+                msg
+                model.clubLinkViewListModel
 
-        let searchBoxMessage = SearchBox.Message.UpdateInputSearchBox String.Empty
-        let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
+        let searchBoxMessage =
+            SearchBox.Message.UpdateInputSearchBox String.Empty
 
-        let homeSidebarMessage = HomeSidebar.Message.LoadLinksByTag (tag, page)
-        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService localStorage homeSidebarMessage model.homeSidebar
+        let searchBoxModel, _ =
+            SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
-        let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
+        let homeSidebarMessage =
+            HomeSidebar.Message.LoadLinksByTag(tag, page)
+
+        let homeSidebar, _ =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                homeSidebarMessage
+                model.homeSidebar
+
+        let batchCmds =
+            [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
 
         { model with
               page = page
@@ -179,23 +203,41 @@ let update (jsRuntime: IJSRuntime)
               activeMenuSection = MenuSection.Tag
               searchBoxModel = searchBoxModel
               homeSidebar = homeSidebar
-              clubLinkViewListModel = clubLinkViewListModel }, Cmd.batch batchCmds
+              clubLinkViewListModel = clubLinkViewListModel },
+        Cmd.batch batchCmds
 
     | LoadClubLinksSearch (term, page), _ ->
-        let arg = ( model.clubId, term, page )
+        let arg = (model.clubId, term, page)
 
-        let msg = ClubLinkViewList.Message.LoadClubLinksBySearch (arg)
+        let msg =
+            ClubLinkViewList.Message.LoadClubLinksBySearch(arg)
 
         let clubLinkViewListModel, clubLinkViewListCmd =
-            ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
+            ClubLinkViewList.update
+                jsRuntime
+                timonService
+                msg
+                model.clubLinkViewListModel
 
-        let searchBoxMessage = SearchBox.Message.UpdateInputSearchBox term
-        let searchBoxModel, _ = SearchBox.update timonService searchBoxMessage model.searchBoxModel
+        let searchBoxMessage =
+            SearchBox.Message.UpdateInputSearchBox term
 
-        let homeSidebarMessage = HomeSidebar.Message.LoadLinksBySearch (term, page)
-        let homeSidebar, _ = HomeSidebar.update jsRuntime timonService localStorage homeSidebarMessage model.homeSidebar
+        let searchBoxModel, _ =
+            SearchBox.update timonService searchBoxMessage model.searchBoxModel
 
-        let batchCmds = [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
+        let homeSidebarMessage =
+            HomeSidebar.Message.LoadLinksBySearch(term, page)
+
+        let homeSidebar, _ =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                homeSidebarMessage
+                model.homeSidebar
+
+        let batchCmds =
+            [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
 
         { model with
               page = page
@@ -203,13 +245,22 @@ let update (jsRuntime: IJSRuntime)
               activeMenuSection = MenuSection.Search
               clubLinkViewListModel = clubLinkViewListModel
               homeSidebar = homeSidebar
-              searchBoxModel = searchBoxModel }, Cmd.batch batchCmds
+              searchBoxModel = searchBoxModel },
+        Cmd.batch batchCmds
 
     | AddLinkBoxMsg (AddLinkBox.Message.NotifyLinkAdded), _ ->
         let cmd =
             match model.activeMenuSection with
             | Tag -> Cmd.ofMsg (LoadLinksByTag(model.tagName, model.page))
-            | _ -> Cmd.ofMsg (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page))
+            | _ ->
+                Cmd.ofMsg
+                    (LoadClubLinks
+                        (false,
+                         model.clubName,
+                         model.clubId,
+                         model.channelName,
+                         model.channelId,
+                         model.page))
 
         model, cmd
 
@@ -221,46 +272,68 @@ let update (jsRuntime: IJSRuntime)
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinksSearch (term)), _ ->
         { model with
-            activeMenuSection = MenuSection.Search },
+              activeMenuSection = MenuSection.Search },
         Cmd.ofMsg (LoadClubLinksSearch(term, 0))
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinksByTag (tag)), _ ->
         let channelMenuModel =
-            { model.homeSidebar.channelMenuModel with activeChannelId = Guid.Empty }
+            { model.homeSidebar.channelMenuModel with
+                  activeChannelId = Guid.Empty }
 
         let homeSidebar =
-            { model.homeSidebar with channelMenuModel = channelMenuModel }
+            { model.homeSidebar with
+                  channelMenuModel = channelMenuModel }
 
         { model with
               homeSidebar = homeSidebar
               activeMenuSection = MenuSection.Tag },
         Cmd.ofMsg (LoadClubLinksByTag(tag, 0))
 
-    | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinks (channelId, channel)), _ ->
+    | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinks (channelId,
+                                                               channel)),
+      _ ->
         let channelMenuModel =
-            { model.homeSidebar.channelMenuModel with activeChannelId = channelId }
+            { model.homeSidebar.channelMenuModel with
+                  activeChannelId = channelId }
 
         let homeSidebar =
-            { model.homeSidebar with channelMenuModel = channelMenuModel }
+            { model.homeSidebar with
+                  channelMenuModel = channelMenuModel }
 
         { model with
-            homeSidebar = homeSidebar
-            activeMenuSection = MenuSection.Channel },
-        Cmd.ofMsg (LoadClubLinks(false, model.clubName, model.clubId, channel, channelId, 0))
+              homeSidebar = homeSidebar
+              activeMenuSection = MenuSection.Channel },
+        Cmd.ofMsg
+            (LoadClubLinks
+                (false, model.clubName, model.clubId, channel, channelId, 0))
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.NotifyTagsUpdated), _ ->
         let cmd =
             match model.activeMenuSection with
             | Tag -> Cmd.ofMsg (LoadLinksByTag(model.tagName, model.page))
-            | _ -> Cmd.ofMsg (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page))
+            | _ ->
+                Cmd.ofMsg
+                    (LoadClubLinks
+                        (false,
+                         model.clubName,
+                         model.clubId,
+                         model.channelName,
+                         model.channelId,
+                         model.page))
 
         model, cmd
 
-    | ClubLinkViewItemMsg (ClubLinkViewList.Message.OnLoadClubLinks data), _ ->
+    | ClubLinkViewItemMsg (ClubLinkViewList.Message.ClubLinksLoaded data), _ ->
 
-        let msg = ClubLinkViewList.Message.OnLoadClubLinks data
+        let msg =
+            ClubLinkViewList.Message.ClubLinksLoaded data
+
         let clubLinkViewListModel, _ =
-            ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
+            ClubLinkViewList.update
+                jsRuntime
+                timonService
+                msg
+                model.clubLinkViewListModel
 
         let addLinkBoxModel =
             { model.addLinkBoxModel with
@@ -270,38 +343,66 @@ let update (jsRuntime: IJSRuntime)
                   tagName = model.tagName
                   clubId = model.clubId }
 
-        let loadTagsMessage = HomeSidebar.Message.RecentTagsMenuMsg (RecentTagsMenu.Message.LoadTags)
-        let homeSidebarModel, cmdUpdateRecentTags = HomeSidebar.update jsRuntime timonService localStorage loadTagsMessage model.homeSidebar
+        let loadTagsMessage =
+            HomeSidebar.Message.RecentTagsMenuMsg
+                (RecentTagsMenu.Message.LoadTags)
 
-        let model' = { model with homeSidebar = homeSidebarModel }
+        let homeSidebarModel, cmdUpdateRecentTags =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                loadTagsMessage
+                model.homeSidebar
+
+        let model' =
+            { model with
+                  homeSidebar = homeSidebarModel }
 
 
-        let loadTermsMessage = HomeSidebar.Message.RecentSearchMenuMsg (RecentSearchMenu.Message.LoadTerms)
-        let homeSidebarModel', cmdUpdateRecentTerms = HomeSidebar.update jsRuntime timonService localStorage loadTermsMessage model'.homeSidebar
+        let loadTermsMessage =
+            HomeSidebar.Message.RecentSearchMenuMsg
+                (RecentSearchMenu.Message.LoadTerms)
+
+        let homeSidebarModel', cmdUpdateRecentTerms =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                loadTermsMessage
+                model'.homeSidebar
 
         jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
         |> Async.AwaitTask
         |> ignore
 
         { model with
-            clubLinkViewListModel = clubLinkViewListModel
-            addLinkBoxModel = addLinkBoxModel
-            homeSidebar = homeSidebarModel'
-            page = data.Page
-            // homeSidebar = homeSidebar
-            showNext = data.ShowNext },
-                            Cmd.batch [ Cmd.map HomeSidebarMsg cmdUpdateRecentTags
-                                        Cmd.map HomeSidebarMsg cmdUpdateRecentTerms ]
+              clubLinkViewListModel = clubLinkViewListModel
+              addLinkBoxModel = addLinkBoxModel
+              homeSidebar = homeSidebarModel'
+              page = data.Page
+              // homeSidebar = homeSidebar
+              showNext = data.ShowNext },
+        Cmd.batch [
+            Cmd.map HomeSidebarMsg cmdUpdateRecentTags
+            Cmd.map HomeSidebarMsg cmdUpdateRecentTerms
+        ]
 
     | ClubLinkViewItemMsg msg, _ ->
         let m, cmd =
-            ClubLinkViewList.update jsRuntime timonService msg model.clubLinkViewListModel
+            ClubLinkViewList.update
+                jsRuntime
+                timonService
+                msg
+                model.clubLinkViewListModel
 
-        { model with clubLinkViewListModel = m }, Cmd.map ClubLinkViewItemMsg cmd
+        { model with clubLinkViewListModel = m },
+        Cmd.map ClubLinkViewItemMsg cmd
 
 
     | SearchBoxMsg (SearchBox.Message.LoadSearch (term, page)), _ ->
-        let cmdBatchs = [Cmd.ofMsg (LoadClubLinksSearch (term, page))]
+        let cmdBatchs =
+            [ Cmd.ofMsg (LoadClubLinksSearch(term, page)) ]
 
         let searchBoxModel =
             { model.searchBoxModel with
@@ -311,15 +412,13 @@ let update (jsRuntime: IJSRuntime)
               page = page
               term = term
               activeMenuSection = MenuSection.Search
-              searchBoxModel = searchBoxModel }, Cmd.batch cmdBatchs
+              searchBoxModel = searchBoxModel },
+        Cmd.batch cmdBatchs
     | SearchBoxMsg (SearchBox.Message.ToggleSidebarVisibility), _ ->
-        let clubSidebarMessage = ClubSidebar.Message.ToggleSidebarVisibility
+        let clubSidebarMessage =
+            ClubSidebar.Message.ToggleSidebarVisibility
 
-        // let clubSidebarModel, _ = ClubSidebar.update timonService clubSidebarMessage model.clubSidebarModel
-
-        // { model with clubSidebarModel = clubSidebarModel }, Cmd.none
-
-        model, Cmd.ofMsg(ClubSidebarMsg clubSidebarMessage)
+        model, Cmd.ofMsg (ClubSidebarMsg clubSidebarMessage)
 
     | SearchBoxMsg msg, _ ->
         let m, cmd =
@@ -327,59 +426,182 @@ let update (jsRuntime: IJSRuntime)
 
         { model with searchBoxModel = m }, Cmd.map SearchBoxMsg cmd
 
-    | HomeSidebarMsg (HomeSidebar.Message.LoadLinks (shouldLoadChannels, channelName, channelId, page ) ), _ ->
+    | HomeSidebarMsg (HomeSidebar.Message.LoadLinks (shouldLoadChannels,
+                                                     channelName,
+                                                     channelId,
+                                                     page)),
+      _ ->
 
-        let msg = HomeSidebar.Message.LoadLinks (shouldLoadChannels, channelName, channelId, page)
-        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
+        let msg =
+            HomeSidebar.Message.LoadLinks
+                (shouldLoadChannels, channelName, channelId, page)
 
-        let loadClubLinksArgs = shouldLoadChannels, model.clubName, model.clubId, channelName, channelId, page
-        let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinks loadClubLinksArgs)]
+        let homeSidebar, cmd =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                msg
+                model.homeSidebar
 
-        { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
+        let loadClubLinksArgs =
+            shouldLoadChannels,
+            model.clubName,
+            model.clubId,
+            channelName,
+            channelId,
+            page
 
-    | HomeSidebarMsg (HomeSidebar.Message.LoadLinksByTag (tag, page) ), _ ->
+        let cmdBatchs =
+            [ Cmd.map HomeSidebarMsg cmd
+              Cmd.ofMsg (LoadClubLinks loadClubLinksArgs) ]
 
-        let msg = HomeSidebar.Message.LoadLinksByTag (tag, page)
-        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
+        { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
 
-        let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinksByTag (tag, page))]
+    | HomeSidebarMsg (HomeSidebar.Message.LoadLinksByTag (tag, page)), _ ->
 
-        { model with homeSidebar = homeSidebar}, Cmd.batch cmdBatchs
+        let msg =
+            HomeSidebar.Message.LoadLinksByTag(tag, page)
 
-    | HomeSidebarMsg (HomeSidebar.Message.LoadLinksBySearch (term, page) ), _ ->
-        let msg = HomeSidebar.Message.LoadLinksBySearch (term, page)
-        let homeSidebar, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
+        let homeSidebar, cmd =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                msg
+                model.homeSidebar
 
-        let cmdBatchs = [ Cmd.map HomeSidebarMsg cmd; Cmd.ofMsg (LoadClubLinksSearch (term, page))]
+        let cmdBatchs =
+            [ Cmd.map HomeSidebarMsg cmd
+              Cmd.ofMsg (LoadClubLinksByTag(tag, page)) ]
+
+        { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
+
+    | HomeSidebarMsg (HomeSidebar.Message.LoadLinksBySearch (term, page)), _ ->
+        let msg =
+            HomeSidebar.Message.LoadLinksBySearch(term, page)
+
+        let homeSidebar, cmd =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                msg
+                model.homeSidebar
+
+        let cmdBatchs =
+            [ Cmd.map HomeSidebarMsg cmd
+              Cmd.ofMsg (LoadClubLinksSearch(term, page)) ]
 
         { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
 
     | HomeSidebarMsg msg, _ ->
-        let m, cmd = HomeSidebar.update jsRuntime timonService localStorage msg model.homeSidebar
+        let m, cmd =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                msg
+                model.homeSidebar
 
-        { model with homeSidebar = m}, Cmd.map HomeSidebarMsg cmd
+        { model with homeSidebar = m }, Cmd.map HomeSidebarMsg cmd
 
-    | ClubSidebarMsg (ClubSidebar.Message.ChangeClub (clubId, clubName)), _ ->
+    | ClubSidebarMsg (ClubSidebar.Message.ChangeClub (clubView)), _ ->
         let cmd =
-            Cmd.ofMsg (LoadClubLinks (true, clubName, clubId, String.Empty, Guid.Empty, 0))
+            Cmd.ofMsg
+                (LoadClubLinks
+                    (true,
+                     clubView.Name,
+                     clubView.Id,
+                     String.Empty,
+                     Guid.Empty,
+                     0))
 
-        let clubMsg = ClubSidebar.Message.ChangeClub (clubId, clubName)
+        let clubMsg = ClubSidebar.Message.ChangeClub(clubView)
 
-        let clubSidebarModel, _ = ClubSidebar.update jsRuntime timonService clubMsg model.clubSidebarModel
+        let clubSidebarModel, _ =
+            ClubSidebar.update
+                jsRuntime
+                timonService
+                clubMsg
+                model.clubSidebarModel
 
-        let searchBoxModel = { model.searchBoxModel with clubName = clubName }
-        { model with searchBoxModel = searchBoxModel ; clubSidebarModel = clubSidebarModel }, cmd
+        let searchBoxModel =
+            { model.searchBoxModel with
+                  clubName = clubView.Name }
+
+        { model with
+              searchBoxModel = searchBoxModel
+              clubSidebarModel = clubSidebarModel },
+        cmd
+
+    | ClubSidebarMsg (ClubSidebar.Message.NoClubs), _ ->
+        let cmd =
+            Cmd.ofMsg (AnonymousLinkViewList.LoadLinks(0))
+
+        model, Cmd.map AnonymousLinkViewListMsg cmd
 
     | ClubSidebarMsg msg, _ ->
-        let clubSidebarModel, cmd = ClubSidebar.update jsRuntime timonService msg model.clubSidebarModel
-        { model with clubSidebarModel = clubSidebarModel }, Cmd.map ClubSidebarMsg cmd
+        let clubSidebarModel, cmd =
+            ClubSidebar.update jsRuntime timonService msg model.clubSidebarModel
+
+        { model with
+              clubSidebarModel = clubSidebarModel },
+        Cmd.map ClubSidebarMsg cmd
+
+    | AnonymousLinkViewListMsg (AnonymousLinkViewList.Message.LinksLoaded data),
+      _ ->
+        let anonymousMsg =
+            AnonymousLinkViewList.Message.LinksLoaded data
+
+        let anonymouslinkViewListModel, cmd =
+            AnonymousLinkViewList.update
+                jsRuntime
+                timonService
+                anonymousMsg
+                model.anonymouslinkViewListModel
+
+        { model with
+              anonymouslinkViewListModel = anonymouslinkViewListModel
+              page = data.Page
+              showNext = data.ShowNext },
+        Cmd.map AnonymousLinkViewListMsg cmd
+
+    | AnonymousLinkViewListMsg (AnonymousLinkViewList.Message.LoadLinks page), _ ->
+        let anonymousMsg =
+            AnonymousLinkViewList.Message.LoadLinks page
+
+        let anonymouslinkViewListModel, cmd =
+            AnonymousLinkViewList.update
+                jsRuntime
+                timonService
+                anonymousMsg
+                model.anonymouslinkViewListModel
+
+        { model with
+              anonymouslinkViewListModel = anonymouslinkViewListModel
+              page = page
+              activeMenuSection = MenuSection.Channel },
+        Cmd.map AnonymousLinkViewListMsg cmd
+
+// | AnonymousLinkViewListMsg msg, _ ->
+//     let anonymouslinkViewListModel, cmd =
+//         AnonymousLinkViewList.update
+//             jsRuntime
+//             timonService
+//             msg
+//             model.anonymouslinkViewListModel
+
+//     { model with
+//           anonymouslinkViewListModel = anonymouslinkViewListModel },
+//     Cmd.map AnonymousLinkViewListMsg cmd
 
 
 
 type HomeTemplate = Template<"wwwroot/home.html">
 
 let previousButton (model: Model) dispatch =
-    match model.linkViewListModel.links with
+    match model.anonymouslinkViewListModel.links with
     | [||] -> empty
     | _ ->
         let isDisabled, onClick =
@@ -389,9 +611,27 @@ let previousButton (model: Model) dispatch =
                 (false,
                  (fun _ ->
                      match model.activeMenuSection with
-                     | Tag -> dispatch (LoadLinksByTag(model.tagName, model.page - 1))
-                     | Channel -> dispatch (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page - 1))
-                     | Search -> dispatch (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page - 1))))
+                     | Tag ->
+                         dispatch
+                             (LoadLinksByTag(model.tagName, model.page - 1))
+                     | Channel ->
+                         dispatch
+                             (LoadClubLinks
+                                 (false,
+                                  model.clubName,
+                                  model.clubId,
+                                  model.channelName,
+                                  model.channelId,
+                                  model.page - 1))
+                     | Search ->
+                         dispatch
+                             (LoadClubLinks
+                                 (false,
+                                  model.clubName,
+                                  model.clubId,
+                                  model.channelName,
+                                  model.channelId,
+                                  model.page - 1))))
 
         a [ attr.``class`` Bulma.``pagination-previous``
             attr.disabled isDisabled
@@ -400,20 +640,38 @@ let previousButton (model: Model) dispatch =
         ]
 
 let nextButton (model: Model) dispatch =
-    match model.linkViewListModel.links with
+    match model.anonymouslinkViewListModel.links with
     | [||] -> empty
     | _ ->
         let isDisabled, onClick =
             match model.showNext
-                  && model.linkViewListModel.links.Length > 0 with
+                  && model.anonymouslinkViewListModel.links.Length > 0 with
             | false -> (true, (fun _ -> ()))
             | true ->
                 (false,
                  (fun _ ->
                      match model.activeMenuSection with
-                     | Tag -> dispatch (LoadLinksByTag(model.tagName, model.page + 1))
-                     | Channel -> dispatch (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page + 1))
-                     | Search -> dispatch (LoadClubLinks(false, model.clubName, model.clubId, model.channelName, model.channelId, model.page + 1))))
+                     | Tag ->
+                         dispatch
+                             (LoadLinksByTag(model.tagName, model.page + 1))
+                     | Channel ->
+                         dispatch
+                             (LoadClubLinks
+                                 (false,
+                                  model.clubName,
+                                  model.clubId,
+                                  model.channelName,
+                                  model.channelId,
+                                  model.page + 1))
+                     | Search ->
+                         dispatch
+                             (LoadClubLinks
+                                 (false,
+                                  model.clubName,
+                                  model.clubId,
+                                  model.channelName,
+                                  model.channelId,
+                                  model.page + 1))))
 
         a [ attr.``class`` Bulma.``pagination-next``
             attr.disabled isDisabled
@@ -421,27 +679,71 @@ let nextButton (model: Model) dispatch =
             text "Next"
         ]
 
+let anonymousListView model dispatch =
+    AnonymousLinkViewList.view
+        model.anonymouslinkViewListModel
+        (LinkViewItemMsg
+         >> dispatch)
+
 let view authState model dispatch =
-    printfn "1 %O" model.clubLinkViewListModel.isReady
-    printfn "2 %O" model.homeSidebar.channelMenuModel.isReady
-    printfn "3 %O" model.homeSidebar.recentSearchMenuModel.isReady
-    printfn "4 %O" model.homeSidebar.recentSearchMenuModel.isReady
-    if not (model.clubLinkViewListModel.isReady && model.homeSidebar.channelMenuModel.isReady &&
-            model.homeSidebar.recentSearchMenuModel.isReady && model.homeSidebar.recentSearchMenuModel.isReady) then
+    let hasClubs =
+        model.clubSidebarModel.clubs.Length
+        <> 0
+
+    if not
+        (model.clubLinkViewListModel.isReady
+         && model.homeSidebar.channelMenuModel.isReady
+         && model.homeSidebar.recentSearchMenuModel.isReady
+         && model.homeSidebar.recentSearchMenuModel.isReady)
+       && authState = AuthState.Success
+       && hasClubs then
+        ComponentsTemplate.LoadingTemplate().Elt()
+    else if not (model.anonymouslinkViewListModel.isReady)
+            && authState
+            <> AuthState.Success then
+        ComponentsTemplate.LoadingTemplate().Elt()
+    else if not (model.anonymouslinkViewListModel.isReady)
+            && authState = AuthState.Success
+            && not hasClubs then
         ComponentsTemplate.LoadingTemplate().Elt()
     else
+
+        printfn "hasclubs %O" hasClubs
+
         let items =
             match authState with
             | AuthState.Success ->
-                ClubLinkViewList.view authState model.clubLinkViewListModel (ClubLinkViewItemMsg >> dispatch)
-            | _ ->
-                LinkViewList.view model.linkViewListModel (LinkViewItemMsg >> dispatch)
+                match hasClubs with
+                | true ->
+                    ClubLinkViewList.view
+                        authState
+                        model.clubLinkViewListModel
+                        (ClubLinkViewItemMsg
+                         >> dispatch)
+                | false -> anonymousListView model dispatch
+
+            | _ -> anonymousListView model dispatch
+
 
         let addLinkBoxHole =
-            AddLinkBox.view authState (model.addLinkBoxModel) (AddLinkBoxMsg >> dispatch)
+            match hasClubs with
+            | true ->
+                AddLinkBox.view
+                    authState
+                    (model.addLinkBoxModel)
+                    (AddLinkBoxMsg
+                     >> dispatch)
+            | false -> empty
 
         let homeSidebarHole =
-            HomeSidebar.view authState (model.homeSidebar) (HomeSidebarMsg >> dispatch)
+            match hasClubs with
+            | true ->
+                HomeSidebar.view
+                    authState
+                    (model.homeSidebar)
+                    (HomeSidebarMsg
+                     >> dispatch)
+            | false -> empty
 
         let previousButton = previousButton model dispatch
         let nextButton = nextButton model dispatch
@@ -449,10 +751,13 @@ let view authState model dispatch =
         let title =
             match authState with
             | AuthState.Success ->
-                match model.activeMenuSection with
-                | Channel ->
-                    cond (String.IsNullOrEmpty(model.channelName))
-                    <| function
+                match hasClubs with
+                | false -> empty
+                | true ->
+                    match model.activeMenuSection with
+                    | Channel ->
+                        cond (String.IsNullOrEmpty(model.channelName))
+                        <| function
                         | true -> empty
                         | false ->
                             h3 [ attr.``class``
@@ -467,63 +772,82 @@ let view authState model dispatch =
                                            " "
                                               [ Bulma.``has-text-weight-light``
                                                 Bulma.``is-italic`` ] ] [
-                                        text model.channelName
+                                    text model.channelName
                                 ]
-                    ]
-                | Tag ->
-                    h3 [ attr.``class``
-                         <| String.concat
-                             " "
-                                [ Bulma.``is-3``
-                                  Bulma.``is-italic``
-                                  Bulma.title ] ] [
-                        text "tag: "
-                        span [ attr.``class``
-                               <| String.concat
-                                   " "
-                                      [ Bulma.``has-text-weight-light``
-                                        Bulma.``is-italic`` ] ] [
-                            text model.tagName
+                            ]
+                    | Tag ->
+                        h3 [ attr.``class``
+                             <| String.concat
+                                 " "
+                                    [ Bulma.``is-3``
+                                      Bulma.``is-italic``
+                                      Bulma.title ] ] [
+                            text "tag: "
+                            span [ attr.``class``
+                                   <| String.concat
+                                       " "
+                                          [ Bulma.``has-text-weight-light``
+                                            Bulma.``is-italic`` ] ] [
+                                text model.tagName
+                            ]
                         ]
-                    ]
-                | Search ->
-                    h3 [ attr.``class``
-                         <| String.concat
-                             " "
-                                [ Bulma.``is-3``
-                                  Bulma.``is-italic``
-                                  Bulma.title ] ] [
-                        text "search: "
-                        span [ attr.``class``
-                               <| String.concat
-                                   " "
-                                      [ Bulma.``has-text-weight-light``
-                                        Bulma.``is-italic`` ] ] [
-                            text model.term
+                    | Search ->
+                        h3 [ attr.``class``
+                             <| String.concat
+                                 " "
+                                    [ Bulma.``is-3``
+                                      Bulma.``is-italic``
+                                      Bulma.title ] ] [
+                            text "search: "
+                            span [ attr.``class``
+                                   <| String.concat
+                                       " "
+                                          [ Bulma.``has-text-weight-light``
+                                            Bulma.``is-italic`` ] ] [
+                                text model.term
+                            ]
                         ]
-                    ]
             | _ -> empty
 
-        let searchBox = SearchBox.view authState model.searchBoxModel (SearchBoxMsg >> dispatch)
+        let searchBox =
+            match hasClubs with
+            | false -> empty
+            | true ->
+                SearchBox.view
+                    authState
+                    model.searchBoxModel
+                    (SearchBoxMsg
+                     >> dispatch)
 
         let emptyLinksHole =
             match authState with
-            | AuthState.Success -> empty
+            | AuthState.Success ->
+                match hasClubs with
+                | true -> empty
+                | false ->
+                    let message =
+                        ClubSidebarMsg
+                            (ClubSidebar.Message.ToggleSidebarVisibility)
+
+                    // Model.Default, Cmd.map AnonymousLinkViewListMsg cmd
+
+                    ComponentsTemplate.SubscribeToClubBanner()
+                                      .ShowClubSidebar(fun _ -> dispatch message)
+                                      .Elt()
+
             | _ -> ComponentsTemplate.EmptyListBanner().Elt()
 
         let clubSidebar =
             match authState with
-            | AuthState.Success -> ClubSidebar.view model.clubSidebarModel (ClubSidebarMsg >> dispatch)
+            | AuthState.Success ->
+                ClubSidebar.view
+                    model.clubSidebarModel
+                    (ClubSidebarMsg
+                     >> dispatch)
             | _ -> empty
 
-        HomeTemplate()
-            .ClubSidebar(clubSidebar)
-            .LinkListHole(items)
-            .MenuSidebar(homeSidebarHole)
-            .AddLinkBoxHole(addLinkBoxHole)
-            .LinksTitleSection(title)
-            .PreviousButton(previousButton)
-            .NextButton(nextButton)
-            .SearchBox(searchBox)
-            .EmptyLinksHole(emptyLinksHole)
-            .Elt()
+        HomeTemplate().ClubSidebar(clubSidebar).LinkListHole(items)
+            .MenuSidebar(homeSidebarHole).AddLinkBoxHole(addLinkBoxHole)
+            .LinksTitleSection(title).PreviousButton(previousButton)
+            .NextButton(nextButton).SearchBox(searchBox)
+            .EmptyLinksHole(emptyLinksHole).Elt()

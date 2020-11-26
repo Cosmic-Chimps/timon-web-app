@@ -1,5 +1,3 @@
 {
-  "[fsharp]": {
-    "editor.formatOnSave": false
-  }
+  "html.validate.scripts": false
 }

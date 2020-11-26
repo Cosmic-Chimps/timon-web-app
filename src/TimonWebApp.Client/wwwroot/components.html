@@ -187,36 +187,89 @@
                     Your Clubs
                 </p>
                 <ul class="menu-list">
-                    <li>Public</li>
-                    <ul>
-                        ${PublicClubs}
-                    </ul>
+                    <li><a>Public</a>
+                        <ul>
+                            ${PublicClubs}
+                        </ul>
+                    </li>
                 </ul>
                 <ul class="menu-list">
-                    <li>Private</li>
-                    <ul>
-                        ${PrivateClubs}
-                    </ul>
+                    <li><a>Protected</a>
+                        <ul>
+                            ${PrivateClubs}
+                        </ul>
+                    </li>
                 </ul>
                 <p class="menu-label">
                     Other Clubs
                 </p>
                 <ul class="menu-list">
-                    <ul>
-                        ${OtherClubs}
-                    </ul>
+                    ${OtherClubs}
                 </ul>
             </aside>
         </section>
     </div>
+    <div class="modal ${ModalActiveClass}">
+        <div class="modal-background"></div>
+        <div class="modal-content">
+            <article class="message is-danger">
+                <div class="message-header">
+                    <p>Are you sure that you want to unsubscribe from ${ModalClubNameUnsubscribe}?</p>
+                    <button class="delete" aria-label="delete" onclick="${DismissModal}"></button>
+                </div>
+                <div class="message-body">
+                    You won't be able to subscribe again to a protected club unless you are invited.
+                </div>
+                <footer class="card-footer">
+                    <button class="button card-footer-item" onclick="${DismissModal}">No, I don't want to
+                        unsubscribe</button>
+                    <button class="button card-footer-item is-danger" onclick="${ForceUnsubscribe}">Yes I am
+                        sure</button>
+                </footer>
+            </article>
+            <!-- <div class="card">
+                <header class="card-header">
+                    <p class="card-header-title">
+                        Are you sure?
+                    </p>
+                </header>
+                <div class="card-content">
+                    <div class="content">
+                        You won't be able to subscribe again to a protected club unless you are invited.
+                    </div>
+                </div>
+                <footer class="card-footer">
+                    <a href="#" class="card-footer-item">No, I don't want to unsubscribe</a>
+                    <a href="#" class="card-footer-item">Yes I am sure</a>
+                </footer>
+            </div> -->
+        </div>
+    </div>
 </template>
 
 <template id="ClubLink">
-    <li><a onClick="${ChangeClub}">${Name}</a></li>
+    <li class="menu-item">
+        <div class="columns ${ActiveClass}">
+            <div class="column is-vcentered ${ActiveClass}"><a onClick="${ChangeClub}"
+                    class="${ActiveClass}">${Name}</a></div>
+            <div class="column ${ActiveClass}">
+                <button class="button is-small is-danger is-pulled-right"
+                    onclick="${UnSubscribeFromClub}">Unsubscribe</button></div>
+        </div>
+    </li>
+</template>
+
+<template id="OtherClubLink">
+    <li class="menu-item">
+        <div class="columns">
+            <div class="column is-vcentered menu-item-content">${Name}</div>
+            <div class="column"><button class="button is-small is-info
+            is-pulled-right" onclick="${SubscribeToClub}">Subscribe</button></div>
+        </div>
+    </li>
 </template>
 
 <template id="LoadingTemplate">
-    <!-- <div class="pageloader is-active"><span class="title">Loading</span></div> -->
     <div class="section hero is-primary is-fullheight">
         <div class="hero-body">
             <div class="container has-text-centered">
@@ -227,4 +280,21 @@
             </div>
         </div>
     </div>
+</template>
+
+<template id="SubscribeToClubBanner">
+    <section class="hero is-info">
+        <div class="hero-body">
+            <div class="columns">
+                <div class="column is-12">
+                    <div class="container content">
+                        <i class="is-large mdi mdi-party-popper mdi-48px"></i>
+                        <i class="is-large mdi mdi-link mdi-48px"></i>
+                        <h1 class="title">Subscribe to a club it's more fun to
+                            share <a onClick="${ShowClubSidebar}"><i class="mdi mdi-arrow-left-right-bold"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
 </template>

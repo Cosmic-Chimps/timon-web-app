@@ -35,7 +35,9 @@ type Model =
           clubId = Guid.Empty
           isReady = false }
 
-type ClubLoadListParams = bool * ClubName * ClubId * ChannelName * ChannelId * int
+type ClubLoadListParams =
+    bool * ClubName * ClubId * ChannelName * ChannelId * int
+
 type ClubLoadListByTermParams = ClubId * string * int
 
 type Message =
@@ -52,19 +54,23 @@ type Message =
     | LoadClubLinks of ClubLoadListParams
     | LoadClubLinksByTag of ClubLoadListByTermParams
     | LoadClubLinksBySearch of ClubLoadListByTermParams
-    | OnLoadClubLinks of ClubListView
+    | ClubLinksLoaded of ClubListView
 
 let private validateTagForm (tagForm) =
     let validateTag (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank(name + " cannot be blank")
+        |> validator.NotBlank
+            (name
+             + " cannot be blank")
         |> validator.IsValid (fun (x: string) ->
             x.Split(",")
             |> Seq.distinct
             |> Seq.map (fun x -> x.Trim())
             |> Seq.filter (fun x -> not (String.IsNullOrEmpty(x)))
             |> Seq.length
-            |> (fun z -> z > 0)) (name + " invalid format")
+            |> (fun z -> z > 0))
+               (name
+                + " invalid format")
         |> validator.End
 
     all
@@ -79,15 +85,24 @@ let private mapClubLinksToView (dataLinks: ClubListView) =
           tagForm = { tags = "" } })
     |> Seq.toArray
 
-let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
+let update (jsRuntime: IJSRuntime)
+           (timonService: TimonService)
+           (message: Message)
+           (model: Model)
+           =
     let updateLink (linkForm: ClubLinkViewValidationForm) =
         model.links
-        |> Array.tryFind (fun itLinkForm -> itLinkForm.view.Link.Id = linkForm.view.Link.Id)
+        |> Array.tryFind (fun itLinkForm ->
+            itLinkForm.view.Link.Id = linkForm.view.Link.Id)
         |> (fun x ->
             match x with
             | Some _ ->
                 model.links
-                |> Array.map (fun v -> if v.view.Link.Id = linkForm.view.Link.Id then linkForm else v)
+                |> Array.map (fun v ->
+                    if v.view.Link.Id = linkForm.view.Link.Id then
+                        linkForm
+                    else
+                        v)
             | None -> model.links)
 
     let validateTagForced (linkForm: ClubLinkViewValidationForm) form =
@@ -105,58 +120,76 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
         | Some _ -> validateTagForced linkForm form
 
     match message, model with
-    | OnLoadClubLinks data, _ ->
+    | ClubLinksLoaded data, _ ->
         let linkViewFormList = mapClubLinksToView data
 
-        { model with links = linkViewFormList; isReady = true }, Cmd.none
+        { model with
+              links = linkViewFormList
+              isReady = true },
+        Cmd.none
 
     | LoadClubLinks (arg: ClubLoadListParams), _ ->
 
-      let _, _, clubId, _, channelId, page = arg
+        let _, _, clubId, _, channelId, page = arg
 
-      let queryParams: GetClubLinkParams =
-        {
-            clubId = clubId
-            channelId = channelId
-            page = page
-        }
+        let queryParams: GetClubLinkParams =
+            { clubId = clubId
+              channelId = channelId
+              page = page }
 
-      let cmd =
-          Cmd.OfAsync.either getClubLinks (timonService, queryParams) OnLoadClubLinks raise
+        let cmd =
+            Cmd.OfAsync.either
+                getClubLinks
+                (timonService, queryParams)
+                ClubLinksLoaded
+                raise
 
-      { model with isLoading = true; clubId = clubId }, cmd
+        { model with
+              isLoading = true
+              clubId = clubId },
+        cmd
 
     | LoadClubLinksByTag (arg: ClubLoadListByTermParams), _ ->
 
-      let clubId, tag, page = arg
+        let clubId, tag, page = arg
 
-      let queryParams: GetClubLinkByTagsParams =
-        {
-            clubId = clubId
-            tagName = tag
-            page = page
-        }
+        let queryParams: GetClubLinkByTagsParams =
+            { clubId = clubId
+              tagName = tag
+              page = page }
 
-      let cmd =
-          Cmd.OfAsync.either getClubLinksByTag (timonService, queryParams) OnLoadClubLinks raise
+        let cmd =
+            Cmd.OfAsync.either
+                getClubLinksByTag
+                (timonService, queryParams)
+                ClubLinksLoaded
+                raise
 
-      { model with isLoading = true; clubId = clubId }, cmd
+        { model with
+              isLoading = true
+              clubId = clubId },
+        cmd
 
     | LoadClubLinksBySearch (arg: ClubLoadListByTermParams), _ ->
 
-      let clubId, term, page = arg
+        let clubId, term, page = arg
 
-      let queryParams: GetClubLinkSearchParams =
-        {
-            clubId = clubId
-            term = term
-            page = page
-        }
+        let queryParams: GetClubLinkSearchParams =
+            { clubId = clubId
+              term = term
+              page = page }
 
-      let cmd =
-          Cmd.OfAsync.either searchClubLinks (timonService, queryParams) OnLoadClubLinks raise
+        let cmd =
+            Cmd.OfAsync.either
+                searchClubLinks
+                (timonService, queryParams)
+                ClubLinksLoaded
+                raise
 
-      { model with isLoading = true; clubId = clubId }, cmd
+        { model with
+              isLoading = true
+              clubId = clubId },
+        cmd
 
     | SetTagFormField ("tags", value, linkForm), _ ->
         let ClublinkViewValidationForm =
@@ -169,7 +202,8 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
 
     | ValidateTag linkForm, _ ->
         let ClublinkViewValidationForm =
-            linkForm.tagForm |> validateTagForced linkForm
+            linkForm.tagForm
+            |> validateTagForced linkForm
 
         let arrayLinkView = updateLink ClublinkViewValidationForm
 
@@ -177,7 +211,8 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
         Cmd.ofMsg
             (AddTag
                 { linkForm with
-                      errorValidateForm = ClublinkViewValidationForm.errorValidateForm })
+                      errorValidateForm =
+                          ClublinkViewValidationForm.errorValidateForm })
 
     | TagsUpdated (linkId, _), _ ->
         let linkForm =
@@ -230,14 +265,25 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
                   clubId = model.clubId }
 
             let cmd =
-                Cmd.OfAsync.either addTags (timonService, payload) TagsUpdated raise
+                Cmd.OfAsync.either
+                    addTags
+                    (timonService, payload)
+                    TagsUpdated
+                    raise
 
             { model with isSaving = true }, cmd
     | DeleteTagFromLink (tag, linkId), _ ->
-        let payload = { linkId = linkId; tagName = tag; clubId = model.clubId }
+        let payload =
+            { linkId = linkId
+              tagName = tag
+              clubId = model.clubId }
 
         let cmd =
-            Cmd.OfAsync.either deleteTagFromLink (timonService, payload) TagsUpdated raise
+            Cmd.OfAsync.either
+                deleteTagFromLink
+                (timonService, payload)
+                TagsUpdated
+                raise
 
         model, cmd
     | LoadLinks _, _ -> model, Cmd.none
@@ -271,7 +317,12 @@ type Component() =
                 let inputBox, icon =
                     match l.isTagFormOpen with
                     | true ->
-                        (formFieldItem "Tags" l.tagForm.tags inputCallback buttonAction, Mdi.``mdi-close-circle-outline``)
+                        (formFieldItem
+                            "Tags"
+                             l.tagForm.tags
+                             inputCallback
+                             buttonAction,
+                         Mdi.``mdi-close-circle-outline``)
                     | false -> (empty, Mdi.``mdi-plus-circle-outline``)
 
                 let iconNode =
@@ -287,74 +338,94 @@ type Component() =
                     | false -> String.Empty
 
                 let linkTags =
-                    concat [ match l.view.Link.Tags with
-                             | "" -> empty
-                             | _ ->
-                                 forEach ((l.view.Link.Tags + l.view.Data.Tags).Split(",")) (fun tag ->
-                                     a [ attr.``class`` Bulma.``level-item``
-                                         on.click (fun _ -> dispatch (LoadLinksByTag(tag.Trim()))) ] [
-                                         span [ attr.``class``
-                                                <| String.concat
-                                                    " "
-                                                       [ Bulma.tag
-                                                         Bulma.``is-info``
-                                                         isLoadingButton ] ] [
-                                             text (tag.Trim())
-                                         ]
-                                     ])
-                             match l.view.CustomTags with
-                             | "" -> empty
-                             | _ ->
-                                 forEach ((l.view.CustomTags).Split(",")) (fun tag ->
-                                     a [ attr.``class`` Bulma.``level-item``
-                                         on.click (fun _ -> dispatch (LoadLinksByTag(tag.Trim()))) ] [
-                                         span [ attr.``class``
-                                                <| String.concat
-                                                    " "
-                                                       [ Bulma.tag
-                                                         Bulma.``is-info``
-                                                         isLoadingButton ] ] [
-                                             text (tag.Trim())
-                                             button [ attr.``class``
-                                                      <| String.concat " " [ Bulma.delete; Bulma.``is-small`` ]
-                                                      on.click (fun _ -> dispatch (DeleteTagFromLink(tag, l.view.Link.Id))) ] []
-                                         ]
-                                     ])
+                    concat [
+                        match l.view.Link.Tags with
+                        | "" -> empty
+                        | _ ->
+                            forEach
+                                ((l.view.Link.Tags
+                                  + l.view.Data.Tags).Split(",")) (fun tag ->
+                                a [ attr.``class`` Bulma.``level-item``
+                                    on.click (fun _ ->
+                                        dispatch (LoadLinksByTag(tag.Trim()))) ] [
+                                    span [ attr.``class``
+                                           <| String.concat
+                                               " "
+                                                  [ Bulma.tag
+                                                    Bulma.``is-info``
+                                                    isLoadingButton ] ] [
+                                        text (tag.Trim())
+                                    ]
+                                ])
+                        match l.view.CustomTags with
+                        | "" -> empty
+                        | _ ->
+                            forEach ((l.view.CustomTags).Split(",")) (fun tag ->
+                                a [ attr.``class`` Bulma.``level-item``
+                                    on.click (fun _ ->
+                                        dispatch (LoadLinksByTag(tag.Trim()))) ] [
+                                    span [ attr.``class``
+                                           <| String.concat
+                                               " "
+                                                  [ Bulma.tag
+                                                    Bulma.``is-info``
+                                                    isLoadingButton ] ] [
+                                        text (tag.Trim())
+                                        button [ attr.``class``
+                                                 <| String.concat
+                                                     " "
+                                                        [ Bulma.delete
+                                                          Bulma.``is-small`` ]
+                                                 on.click (fun _ ->
+                                                     dispatch
+                                                         (DeleteTagFromLink
+                                                             (tag,
+                                                              l.view.Link.Id))) ] []
+                                    ]
+                                ])
 
-                             iconNode ]
+                        iconNode
+                    ]
 
                 let tagForm =
                     match model.authentication with
                     | AuthState.Success ->
-                        concat [ cond l.isTagFormOpen
-                                 <| function
-                                 | true -> inputBox
-                                 | false -> empty ]
+                        concat [
+                            cond l.isTagFormOpen
+                            <| function
+                            | true -> inputBox
+                            | false -> empty
+                        ]
                     | _ -> empty
 
                 let linkMetadataHole =
-                  ComponentsTemplate
-                    .LinkMetadataLevel()
-                    .DomainName(l.view.Link.DomainName)
-                    .Date(l.view.Data.DateCreated.DateTime.ToString())
-                    .Via(l.view.Data.Via)
-                    .SharedBy(l.view.User.Email)
-                    .OnViaClicked(fun _ -> dispatch (LoadLinksSearch(l.view.Data.Via)))
-                    .OnDomainClicked(fun _ -> dispatch (LoadLinksSearch(l.view.Link.DomainName)))
-                    .Elt()
+                    ComponentsTemplate.LinkMetadataLevel()
+                                      .DomainName(l.view.Link.DomainName)
+                                      .Date(l.view.Data.DateCreated.DateTime.ToString
+                                                ()).Via(l.view.Data.Via)
+                                      .SharedBy(l.view.User.Email)
+                                      .OnViaClicked(fun _ ->
+                                      dispatch
+                                          (LoadLinksSearch(l.view.Data.Via)))
+                                      .OnDomainClicked(fun _ ->
+                                      dispatch
+                                          (LoadLinksSearch
+                                              (l.view.Link.DomainName))).Elt()
 
 
-                ComponentsTemplate
-                    .LinkItem()
-                    .Url(l.view.Link.Url)
-                    .Title(l.view.Link.Title)
-                    .ShortDescription(l.view.Link.ShortDescription)
-                    .ChannelName(sprintf "#%s" (l.view.Channel.Name))
-                    .TagForm(tagForm)
-                    .LinkTags(linkTags)
-                    .LinkMetadataHole(linkMetadataHole)
-                    .OnChannelClicked(fun _ -> dispatch (LoadLinks(l.view.Channel.Id, l.view.Channel.Name)))
-                    .Elt())
+                ComponentsTemplate.LinkItem().Url(l.view.Link.Url)
+                                  .Title(l.view.Link.Title)
+                                  .ShortDescription(l.view.Link.ShortDescription)
+                                  .ChannelName(sprintf
+                                                   "#%s"
+                                                   (l.view.Channel.Name))
+                                  .TagForm(tagForm).LinkTags(linkTags)
+                                  .LinkMetadataHole(linkMetadataHole)
+                                  .OnChannelClicked(fun _ ->
+                                  dispatch
+                                      (LoadLinks
+                                          (l.view.Channel.Id,
+                                           l.view.Channel.Name))).Elt())
         | _ -> empty
 
 let view authState (model: Model) dispatch =

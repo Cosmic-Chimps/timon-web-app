@@ -31,7 +31,11 @@ let getCommons (config: IConfiguration) (dataProvider: IDataProtectionProvider) 
     let endpoint = config.["TimonEndPoint"]
     (endpoint, protector)
 
-let singInUser (ctx: IRemoteContext) (protector: IDataProtector) email (res: TokenProvider.Root) =
+let singInUser (ctx: IRemoteContext)
+               (protector: IDataProtector)
+               email
+               (res: TokenProvider.Root)
+               =
     async {
         printf "%s" res.RefreshToken
         let refreshTokenProtected = protector.Protect(res.RefreshToken)
@@ -44,7 +48,8 @@ let singInUser (ctx: IRemoteContext) (protector: IDataProtector) email (res: Tok
               Claim("TimonRefreshToken", refreshTokenProtected)
               Claim("TimonExpiredDate", expiresAt.ToString()) ]
 
-        do! ctx.HttpContext.AsyncSignIn(email, claims = claims, persistFor = TimeSpan.FromDays(365.))
+        do! ctx.HttpContext.AsyncSignIn
+                (email, claims = claims, persistFor = TimeSpan.FromDays(365.))
 
         return res.AccessToken
     }
@@ -80,7 +85,10 @@ let getToken (ctx: IRemoteContext) (protector: IDataProtector) endpoint =
         return! match expireAt < DateTime.UtcNow with
                 | true ->
                     renewToken endpoint { refreshToken = timonRefreshToken }
-                    |> singInUser ctx protector ctx.HttpContext.User.Identity.Name
+                    |> singInUser
+                        ctx
+                           protector
+                           ctx.HttpContext.User.Identity.Name
                 | false -> async { return timonToken }
     }
 
@@ -122,7 +130,8 @@ type AuthService(ctx: IRemoteContext,
                           |> Async.RunSynchronously
                           |> hasResponseValidStatus
                           |> getResponseBodyAsText
-                          |> parseBodyAsObject<TokenProvider.Root> (TokenProvider.Parse)
+                          |> parseBodyAsObject<TokenProvider.Root>
+                              (TokenProvider.Parse)
                           |> fun x ->
                               match x with
                               | Some r ->
@@ -148,7 +157,8 @@ type AuthService(ctx: IRemoteContext,
                           |> Async.RunSynchronously
                           |> hasResponseValidStatus
                           |> getResponseBodyAsText
-                          |> parseBodyAsObject<TokenProvider.Root> (TokenProvider.Parse)
+                          |> parseBodyAsObject<TokenProvider.Root>
+                              (TokenProvider.Parse)
                           |> fun x ->
                               match x with
                               | Some r ->
@@ -162,7 +172,8 @@ type AuthService(ctx: IRemoteContext,
                              | None -> failwith "Not Found"
                   }
 
-          ``sign-out`` = fun () -> async { return! ctx.HttpContext.AsyncSignOut() }
+          ``sign-out`` =
+              fun () -> async { return! ctx.HttpContext.AsyncSignOut() }
 
           ``get-user-name`` =
               ctx.Authorize
@@ -193,7 +204,14 @@ type LinkService(ctx: IRemoteContext,
         { ``get-links`` =
               fun queryParams ->
                   async {
-                      let! response = httpAsync { GET(sprintf "%s/links?page=%i" endpoint queryParams.page) }
+                      let! response =
+                          httpAsync {
+                              GET
+                                  (sprintf
+                                      "%s/links?page=%i"
+                                       endpoint
+                                       queryParams.page)
+                          }
 
                       let links = response |> toText
 
@@ -231,7 +249,12 @@ type LinkService(ctx: IRemoteContext,
 
                       let! response =
                           httpAsync {
-                              POST(sprintf "%s/clubs/%O/channels/%O/links" endpoint payload.clubId payload.channelId)
+                              POST
+                                  (sprintf
+                                      "%s/clubs/%O/channels/%O/links"
+                                       endpoint
+                                       payload.clubId
+                                       payload.channelId)
                               Authorization(sprintf "Bearer %s" authToken)
                               body
                               json (Json.serialize payload)
@@ -248,7 +271,12 @@ type LinkService(ctx: IRemoteContext,
 
                       let! response =
                           httpAsync {
-                              POST(sprintf "%s/clubs/%O/links/%s/tags" endpoint payload.clubId payload.linkId)
+                              POST
+                                  (sprintf
+                                      "%s/clubs/%O/links/%s/tags"
+                                       endpoint
+                                       payload.clubId
+                                       payload.linkId)
                               Authorization(sprintf "Bearer %s" authToken)
                               body
                               json (Json.serialize payload)
@@ -262,7 +290,12 @@ type LinkService(ctx: IRemoteContext,
                   async {
                       let! response =
                           httpAsync {
-                              GET(sprintf "%s/links/by-tag/%s?page=%i" endpoint queryParams.tagName queryParams.page)
+                              GET
+                                  (sprintf
+                                      "%s/links/by-tag/%s?page=%i"
+                                       endpoint
+                                       queryParams.tagName
+                                       queryParams.page)
                           }
 
                       let links = response |> toText
@@ -273,20 +306,31 @@ type LinkService(ctx: IRemoteContext,
           ``get-club-links-by-tag`` =
               ctx.Authorize
               <| fun queryParams ->
-                      printf "%s/clubs/%O/links/by-tag/%s?page=%i" endpoint queryParams.clubId queryParams.tagName queryParams.page
-                      async {
-                          let! authToken = getToken ctx protector endpoint
+                  printf
+                      "%s/clubs/%O/links/by-tag/%s?page=%i"
+                      endpoint
+                      queryParams.clubId
+                      queryParams.tagName
+                      queryParams.page
+                  async {
+                      let! authToken = getToken ctx protector endpoint
 
-                          let! response =
-                              httpAsync {
-                                  GET(sprintf "%s/clubs/%O/links/by-tag/%s?page=%i" endpoint queryParams.clubId queryParams.tagName queryParams.page)
-                                  Authorization(sprintf "Bearer %s" authToken)
-                              }
+                      let! response =
+                          httpAsync {
+                              GET
+                                  (sprintf
+                                      "%s/clubs/%O/links/by-tag/%s?page=%i"
+                                       endpoint
+                                       queryParams.clubId
+                                       queryParams.tagName
+                                       queryParams.page)
+                              Authorization(sprintf "Bearer %s" authToken)
+                          }
 
-                          let links = response |> toText
+                      let links = response |> toText
 
-                          return links
-                      }
+                      return links
+                  }
 
           ``delete-tag-from-link`` =
               ctx.Authorize
@@ -296,7 +340,13 @@ type LinkService(ctx: IRemoteContext,
 
                       let! response =
                           httpAsync {
-                              DELETE(sprintf "%s/clubs/%O/links/%O/tags/%s" endpoint payload.clubId payload.linkId payload.tagName)
+                              DELETE
+                                  (sprintf
+                                      "%s/clubs/%O/links/%O/tags/%s"
+                                       endpoint
+                                       payload.clubId
+                                       payload.linkId
+                                       payload.tagName)
                               Authorization(sprintf "Bearer %s" authToken)
                           }
 
@@ -308,9 +358,16 @@ type LinkService(ctx: IRemoteContext,
               <| fun queryParams ->
                   async {
                       let! authToken = getToken ctx protector endpoint
+
                       let! response =
                           httpAsync {
-                              GET(sprintf "%s/clubs/%O/links/search/%s?page=%i" endpoint queryParams.clubId queryParams.term queryParams.page)
+                              GET
+                                  (sprintf
+                                      "%s/clubs/%O/links/search/%s?page=%i"
+                                       endpoint
+                                       queryParams.clubId
+                                       queryParams.term
+                                       queryParams.page)
                               Authorization(sprintf "Bearer %s" authToken)
                           }
 
@@ -329,14 +386,20 @@ type ChannelService(ctx: IRemoteContext,
 
     override this.Handler =
         { ``get-channels`` =
-              fun (clubId) ->
+              fun clubId ->
                   async {
-                    let! authToken = getToken ctx protector endpoint
-                    return httpAsync {
-                            GET(sprintf "%s/clubs/%O/channels" endpoint clubId)
-                            Authorization(sprintf "Bearer %s" authToken) }
-                         |> Async.RunSynchronously
-                         |> toText
+                      let! authToken = getToken ctx protector endpoint
+
+                      return httpAsync {
+                                 GET
+                                     (sprintf
+                                         "%s/clubs/%O/channels"
+                                          endpoint
+                                          clubId)
+                                 Authorization(sprintf "Bearer %s" authToken)
+                             }
+                             |> Async.RunSynchronously
+                             |> toText
                   }
 
           ``create-channel`` =
@@ -346,7 +409,11 @@ type ChannelService(ctx: IRemoteContext,
                       let! authToken = getToken ctx protector endpoint
 
                       return httpAsync {
-                                 POST(sprintf "%s/clubs/%O/channels" endpoint payload.clubId)
+                                 POST
+                                     (sprintf
+                                         "%s/clubs/%O/channels"
+                                          endpoint
+                                          payload.clubId)
                                  Authorization(sprintf "Bearer %s" authToken)
                                  body
                                  json (Json.serialize payload)
@@ -364,22 +431,21 @@ type ClubService(ctx: IRemoteContext,
     let endpoint, protector = getCommons config dataProvider
 
     override this.Handler =
-        {
-            ``get-other-clubs`` =
-                ctx.Authorize
-                <| fun () ->
-                    async {
-                        let! authToken = getToken ctx protector endpoint
+        { ``get-other-clubs`` =
+              ctx.Authorize
+              <| fun () ->
+                  async {
+                      let! authToken = getToken ctx protector endpoint
 
-                        return httpAsync {
-                                   GET(sprintf "%s/clubs/others" endpoint)
-                                   Authorization(sprintf "Bearer %s" authToken)
-                               }
-                               |> Async.RunSynchronously
-                               |> toText
-                    }
+                      return httpAsync {
+                                 GET(sprintf "%s/clubs/others" endpoint)
+                                 Authorization(sprintf "Bearer %s" authToken)
+                             }
+                             |> Async.RunSynchronously
+                             |> toText
+                  }
 
-            ``get-clubs`` =
+          ``get-clubs`` =
               ctx.Authorize
               <| fun () ->
                   async {
@@ -393,7 +459,7 @@ type ClubService(ctx: IRemoteContext,
                              |> toText
                   }
 
-            ``create-club`` =
+          ``create-club`` =
               ctx.Authorize
               <| fun payload ->
                   async {
@@ -401,6 +467,38 @@ type ClubService(ctx: IRemoteContext,
 
                       return httpAsync {
                                  POST(sprintf "%s/clubs" endpoint)
+                                 Authorization(sprintf "Bearer %s" authToken)
+                                 body
+                                 json (Json.serialize payload)
+                             }
+                             |> Async.RunSynchronously
+                             |> fun x -> x.statusCode
+                  }
+
+          ``subscribe-club`` =
+              ctx.Authorize
+              <| fun payload ->
+                  async {
+                      let! authToken = getToken ctx protector endpoint
+
+                      return httpAsync {
+                                 POST(sprintf "%s/clubs/subscribe" endpoint)
+                                 Authorization(sprintf "Bearer %s" authToken)
+                                 body
+                                 json (Json.serialize payload)
+                             }
+                             |> Async.RunSynchronously
+                             |> fun x -> x.statusCode
+                  }
+
+          ``unsubscribe-club`` =
+              ctx.Authorize
+              <| fun payload ->
+                  async {
+                      let! authToken = getToken ctx protector endpoint
+
+                      return httpAsync {
+                                 POST(sprintf "%s/clubs/unsubscribe" endpoint)
                                  Authorization(sprintf "Bearer %s" authToken)
                                  body
                                  json (Json.serialize payload)

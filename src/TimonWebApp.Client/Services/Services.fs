@@ -47,7 +47,10 @@ type CreateLinkPayload =
       clubId: ClubId }
 
 [<JsonFSharpConverter>]
-type AddTagPayload = { clubId: ClubId; linkId: string; tags: string }
+type AddTagPayload =
+    { clubId: ClubId
+      linkId: string
+      tags: string }
 
 [<JsonFSharpConverter>]
 type GetLinkParams = { page: int }
@@ -62,23 +65,43 @@ type GetClubLinkParams =
 type GetLinkByTagsParams = { tagName: string; page: int }
 
 [<JsonFSharpConverter>]
-type GetClubLinkByTagsParams = { clubId: ClubId; tagName: string; page: int }
+type GetClubLinkByTagsParams =
+    { clubId: ClubId
+      tagName: string
+      page: int }
 
 [<JsonFSharpConverter>]
-type DeleteTagFromLink = { clubId: ClubId; linkId: Guid; tagName: string }
+type DeleteTagFromLink =
+    { clubId: ClubId
+      linkId: Guid
+      tagName: string }
 
 [<JsonFSharpConverter>]
-type GetClubLinkSearchParams = { clubId: ClubId; term: string; page: int }
+type GetClubLinkSearchParams =
+    { clubId: ClubId
+      term: string
+      page: int }
 
 
 #if DEBUG
-type GetLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/links">
-type ChannelViewProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/channels">
-type ClubViewProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/clubs">
-type GetClubLinksResultProvider = JsonProvider<"http://localhost:5011/.meta/v12/get/clubs/links">
+type GetLinksResultProvider =
+    JsonProvider<"http://localhost:5011/.meta/v12/get/links">
+
+type ChannelViewProvider =
+    JsonProvider<"http://localhost:5011/.meta/v12/get/channels">
+
+type ClubViewProvider =
+    JsonProvider<"http://localhost:5011/.meta/v12/get/clubs">
+
+type GetClubLinksResultProvider =
+    JsonProvider<"http://localhost:5011/.meta/v12/get/clubs/links">
 #else
-type GetLinksResultProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/v3/get/links">
-type ChannelViewProvider = JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/v3/channels">
+type GetLinksResultProvider =
+    JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/v3/get/links">
+
+type ChannelViewProvider =
+    JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/v3/channels">
+
 #endif
 type GetLinksResult = GetLinksResultProvider.Root
 type ChannelView = ChannelViewProvider.Root
@@ -110,9 +133,17 @@ type ChannelService =
 [<JsonFSharpConverter>]
 type CreateClubPayload = { name: string }
 
+[<JsonFSharpConverter>]
+type SubscribeClubPayload = { id: Guid; name: string }
+
+[<JsonFSharpConverter>]
+type UnSubscribeClubPayload = { id: Guid; name: string }
+
 type ClubService =
     { ``get-clubs``: unit -> Async<string>
       ``create-club``: CreateClubPayload -> Async<HttpStatusCode>
+      ``subscribe-club``: SubscribeClubPayload -> Async<HttpStatusCode>
+      ``unsubscribe-club``: UnSubscribeClubPayload -> Async<HttpStatusCode>
       ``get-other-clubs``: unit -> Async<string> }
     interface IRemoteService with
         member this.BasePath = "/clubs"
@@ -159,7 +190,9 @@ let createLink (timonService, payload) =
 
 let deleteTagFromLink (timonService, payload) =
     async {
-        let! statusCode = timonService.linkService.``delete-tag-from-link`` payload
+        let! statusCode =
+            timonService.linkService.``delete-tag-from-link`` payload
+
         return payload.linkId, statusCode
     }
 
@@ -195,7 +228,9 @@ let getClubLinks (timonService, queryParams) =
 
 let getClubLinksByTag (timonService, queryParams: GetClubLinkByTagsParams) =
     async {
-        let! resp = timonService.linkService.``get-club-links-by-tag`` queryParams
+        let! resp =
+            timonService.linkService.``get-club-links-by-tag`` queryParams
+
         return GetClubLinksResultProvider.Parse resp
     }
 
@@ -204,3 +239,9 @@ let getOtherClubs timonService =
         let! resp = timonService.clubService.``get-other-clubs`` ()
         return ClubViewProvider.Parse resp
     }
+
+let subscribeClub (timonService, payload) =
+    async { return! timonService.clubService.``subscribe-club`` payload }
+
+let unsubscribeClub (timonService, payload) =
+    async { return! timonService.clubService.``unsubscribe-club`` payload }

@@ -36,11 +36,45 @@ dd {
     bottom: 0;
     width: 25%;
     transition: 1s;
-    z-index: 99;
+    z-index: 30;
 }
 
 #sidebar.show {
     left: 75%;
+}
+
+.column.is-vcentered {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    /* used this for multiple child */
+    align-items: center;
+    /* if an only child */
+}
+
+.menu-list div:hover {
+    background-color: #f5f5f5;
+    color: #222;
+}
+
+.menu-list div.is-active {
+    background-color: #3273dc;
+}
+
+.menu-list div.is-active a {
+    color: #fff;
+}
+
+/* .menu-list div.main {
+    padding: .5em .75em;
+} */
+
+li.menu-item {
+    margin: 12px 0px;
+}
+
+div.menu-item-content {
+    padding: 0.5em 1.75em
 }
 
 /* .loader-wrapper {

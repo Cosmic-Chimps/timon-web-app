@@ -6,6 +6,7 @@ open Elmish
 open Microsoft.JSInterop
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages
+open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Services
 open Bolero.Html
 open TimonWebApp.Client.Validation
@@ -35,14 +36,20 @@ type Message =
 let validateChannelForm (channelForm) =
     let validateName (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank(name + " cannot be blank")
+        |> validator.NotBlank
+            (name
+             + " cannot be blank")
         |> validator.End
 
     all
     <| fun t -> { name = validateName t "Name" channelForm.name }
 
 
-let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Message) (model: Model) =
+let update (jsRuntime: IJSRuntime)
+           (timonService: TimonService)
+           (message: Message)
+           (model: Model)
+           =
     let validateChannelForced form =
         let mapResults = validateChannelForm form
         { model with
@@ -60,7 +67,10 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
               name = value.Trim() }
         |> validateChannel,
         Cmd.none
-    | ValidateChannel, _ -> model.channelForm |> validateChannelForced, Cmd.ofMsg (AddChannel)
+    | ValidateChannel, _ ->
+        model.channelForm
+        |> validateChannelForced,
+        Cmd.ofMsg (AddChannel)
     | ChannelAdded _, _ ->
         let channelForm = { model.channelForm with name = "" }
         { model with
@@ -78,10 +88,16 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) (message: Messag
     | _, ({ errorsValidateChannelForm = Some (Error _) }) -> model, Cmd.none
 
     | AddChannel, _ ->
-        let payload: CreateChannelPayload = { clubId = model.clubId; name = model.channelForm.name }
+        let payload: CreateChannelPayload =
+            { clubId = model.clubId
+              name = model.channelForm.name }
 
         let cmd =
-            Cmd.OfAsync.either createChannel (timonService, payload) ChannelAdded raise
+            Cmd.OfAsync.either
+                createChannel
+                (timonService, payload)
+                ChannelAdded
+                raise
 
         model, cmd
     | _, _ -> model, Cmd.none
@@ -91,7 +107,7 @@ type Component() =
 
     override _.View model dispatch =
         let formFieldItem =
-            Controls.inputAdd
+            inputAdd
                 "channel_new_input"
                 "Add new channel"
                 Mdi.``mdi-pound``
@@ -106,7 +122,11 @@ type Component() =
         let inputBox, icon =
             match model.isAddingChannel with
             | true ->
-                (formFieldItem "Name" model.channelForm.name inputCallback buttonAction,
+                (formFieldItem
+                    "Name"
+                     model.channelForm.name
+                     inputCallback
+                     buttonAction,
                  Mdi.``mdi-minus-circle-outline``)
             | false -> (empty, Mdi.``mdi-plus-circle-outline``)
 
@@ -117,14 +137,7 @@ type Component() =
                     <| String.concat " " [ "mdi"; icon ] ] []
             ]
 
-        ComponentsTemplate
-            .AddChannelForm()
-            .Icon(icon)
-            .ChannelInput(inputBox)
-            .Elt()
+        ComponentsTemplate.AddChannelForm().Icon(icon).ChannelInput(inputBox)
+                          .Elt()
 
-let view (model: Model) dispatch =
-    ecomp<Component, _, _>
-        []
-        model
-        dispatch
+let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch

@@ -6,7 +6,7 @@ open System.Net
 open Bolero
 open Elmish
 open TimonWebApp.Client.Common
-open TimonWebApp.Client.Pages.Controls
+open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 open Bolero.Html
@@ -43,8 +43,12 @@ type Message =
 let validateForm (urlForm) =
     let ValidUrl (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank(name + " cannot be blank")
-        |> validator.IsUrl(name + " should be in url format 'https://'")
+        |> validator.NotBlank
+            (name
+             + " cannot be blank")
+        |> validator.IsUrl
+            (name
+             + " should be in url format 'https://'")
         |> validator.End
 
     all
@@ -69,7 +73,10 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
               url = value.Trim() }
         |> validate,
         Cmd.none
-    | ValidateLink, _ -> model.urlForm |> validateForced, Cmd.ofMsg (AddLink)
+    | ValidateLink, _ ->
+        model.urlForm
+        |> validateForced,
+        Cmd.ofMsg (AddLink)
     | LinkAdded _, _ ->
         let urlForm = { model.urlForm with url = "" }
         { model with urlForm = urlForm }, Cmd.ofMsg NotifyLinkAdded
@@ -93,7 +100,11 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
               clubId = model.clubId }
 
         let cmdAddLink =
-            Cmd.OfAsync.either createLink (timonService, createLinkPayload) LinkAdded raise
+            Cmd.OfAsync.either
+                createLink
+                (timonService, createLinkPayload)
+                LinkAdded
+                raise
 
         model, cmdAddLink
     | _, _ -> model, Cmd.none
@@ -122,7 +133,12 @@ type Component() =
                 | Tag -> sprintf "Add to general with tag %s" model.tagName
                 | Search -> "Add to general"
 
-            formFieldItem "Link" model.urlForm.url inputCallback buttonAction buttonName
+            formFieldItem
+                "Link"
+                model.urlForm.url
+                inputCallback
+                buttonAction
+                buttonName
         | _ -> empty
 
 

@@ -155,6 +155,15 @@
         </div>
 </template>
 
+<template id="ClubForm">
+    <div class="has-background-primary-light">
+        ${ClubInput}
+        <label class="checkbox">
+            <input type="checkbox" bind="${ClubFormIsProtected}">
+            Is protected
+        </label>
+    </div>
+</template>
 
 <template id="ClubSidebar">
     <div id="sidebar" class="has-background-primary-light ${SidebarClass}">
@@ -170,18 +179,16 @@
                 </div>
             </div>
             <div class="level">
-                <div class="level-left">
-                    ${ClubInput}
-                </div>
+                ${ClubForm}
             </div>
-            <div class="field">
+            <!-- <div class="field">
                 <p class="control has-icons-left">
                     <input class="input" type="text" placeholder="Search">
                     <span class="icon is-small is-left">
                         <i class="mdi mdi-tree"></i>
                     </span>
                 </p>
-            </div>
+            </div> -->
             <aside class="menu">
                 <p class="menu-label">
                     Your Clubs
@@ -209,40 +216,25 @@
             </aside>
         </section>
     </div>
-    <div class="modal ${ModalActiveClass}">
+    ${ClubSettingsModal}
+
+</template>
+
+<template id="ClubSettingsModal">
+    <div class="modal is-active">
         <div class="modal-background"></div>
-        <div class="modal-content">
-            <article class="message is-danger">
-                <div class="message-header">
-                    <p>Are you sure that you want to unsubscribe from ${ModalClubNameUnsubscribe}?</p>
-                    <button class="delete" aria-label="delete" onclick="${DismissModal}"></button>
-                </div>
-                <div class="message-body">
-                    You won't be able to subscribe again to a protected club unless you are invited.
-                </div>
-                <footer class="card-footer">
-                    <button class="button card-footer-item" onclick="${DismissModal}">No, I don't want to
-                        unsubscribe</button>
-                    <button class="button card-footer-item is-danger" onclick="${ForceUnsubscribe}">Yes I am
-                        sure</button>
-                </footer>
-            </article>
-            <!-- <div class="card">
-                <header class="card-header">
-                    <p class="card-header-title">
-                        Are you sure?
-                    </p>
-                </header>
-                <div class="card-content">
-                    <div class="content">
-                        You won't be able to subscribe again to a protected club unless you are invited.
-                    </div>
-                </div>
-                <footer class="card-footer">
-                    <a href="#" class="card-footer-item">No, I don't want to unsubscribe</a>
-                    <a href="#" class="card-footer-item">Yes I am sure</a>
-                </footer>
-            </div> -->
+        <div class="modal-card">
+            <header class="modal-card-head has-background-info">
+                <p class="modal-card-title has-text-white">${ClubName}</p>
+                <button class="delete" aria-label="delete" onclick="${DismissModal}"></button>
+            </header>
+            <section class="modal-card-body">
+                ${ClubSettingsTabControl}
+            </section>
+            <!-- <footer class="modal-card-foot">
+              <button class="button is-success">Save changes</button>
+              <button class="button">Cancel</button>
+            </footer> -->
         </div>
     </div>
 </template>
@@ -253,8 +245,10 @@
             <div class="column is-vcentered ${ActiveClass}"><a onClick="${ChangeClub}"
                     class="${ActiveClass}">${Name}</a></div>
             <div class="column ${ActiveClass}">
-                <button class="button is-small is-danger is-pulled-right"
-                    onclick="${UnSubscribeFromClub}">Unsubscribe</button></div>
+                <!-- <button class="button is-small is-danger is-pulled-right"
+                    onclick="${UnSubscribeFromClub}">Unsubscribe</button></div> -->
+                <button class="button is-small has-background-light is-pulled-right"
+                    onclick="${OpenClubSettings}">Settings</button></div>
         </div>
     </li>
 </template>
@@ -264,7 +258,7 @@
         <div class="columns">
             <div class="column is-vcentered menu-item-content">${Name}</div>
             <div class="column"><button class="button is-small is-info
-            is-pulled-right" onclick="${SubscribeToClub}">Subscribe</button></div>
+            is-pulled-right" onclick="${SubscribeToClub}">Join</button></div>
         </div>
     </li>
 </template>

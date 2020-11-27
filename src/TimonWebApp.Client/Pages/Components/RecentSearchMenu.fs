@@ -12,22 +12,26 @@ type Model =
     { terms: string list
       activeTerm: string
       activeSection: MenuSection
-      isReady: bool }
+      isReady: bool
+      clubId: Guid }
     static member Default =
         { terms = List.empty
           activeTerm = String.Empty
           activeSection = MenuSection.Search
-          isReady = false }
+          isReady = false
+          clubId = Guid.Empty }
 
 type Message =
     | LoadLinks of string * MenuSection
-    | LoadTerms
+    | LoadTerms of Guid
     | RecentTermsUpdated of string list
 
 
-let updateSearchLocalStorage ((localStorage: ILocalStorageService), (model: Model)) =
+let updateSearchLocalStorage ((localStorage: ILocalStorageService),
+                              (model: Model)) =
     async {
-        let key = "timon_recent_search"
+        let key =
+            sprintf "timon_recent_search_%O" model.clubId
 
         let! exists =
             localStorage.ContainKeyAsync(key).AsTask()
@@ -35,10 +39,12 @@ let updateSearchLocalStorage ((localStorage: ILocalStorageService), (model: Mode
 
         match exists with
         | false ->
-            match model.activeTerm <> String.Empty with
+            match model.activeTerm
+                  <> String.Empty with
             | false -> return []
             | true ->
-                localStorage.SetItemAsync<string list>(key, [ model.activeTerm ]).AsTask()
+                localStorage.SetItemAsync<string list>(key, [ model.activeTerm ])
+                    .AsTask()
                 |> Async.AwaitTask
                 |> ignore
 
@@ -50,7 +56,8 @@ let updateSearchLocalStorage ((localStorage: ILocalStorageService), (model: Mode
 
             let recentSearch = Json.deserialize (recentSearchJson)
 
-            match model.activeTerm <> String.Empty with
+            match model.activeTerm
+                  <> String.Empty with
             | false -> return recentSearch
             | true ->
                 return recentSearch
@@ -60,13 +67,19 @@ let updateSearchLocalStorage ((localStorage: ILocalStorageService), (model: Mode
                            | Some _ -> recentSearch
                            | None _ ->
                                let recentSearch' =
-                                   match recentSearch.Length + 1 > 9 with
-                                   | false -> [ model.activeTerm ] @ recentSearch
+                                   match recentSearch.Length
+                                         + 1 > 9 with
+                                   | false ->
+                                       [ model.activeTerm ]
+                                       @ recentSearch
                                    | true ->
                                        [ model.activeTerm ]
-                                       @ recentSearch.[..recentSearch.Length - 2]
+                                       @ recentSearch.[..recentSearch.Length
+                                                         - 2]
 
-                               localStorage.SetItemAsync<string list>(key, recentSearch').AsTask()
+                               localStorage.SetItemAsync<string list>(key,
+                                                                      recentSearch')
+                                   .AsTask()
                                |> Async.AwaitTask
                                |> ignore
                                recentSearch'
@@ -75,12 +88,33 @@ let updateSearchLocalStorage ((localStorage: ILocalStorageService), (model: Mode
 let update (localStorage: ILocalStorageService) msg model =
     match msg with
     | RecentTermsUpdated recentTerms ->
-        { model with terms = recentTerms; isReady = true }, Cmd.none
-    | LoadTerms _ ->
+        { model with
+              terms = recentTerms
+              isReady = true },
+        Cmd.none
+
+    | LoadTerms clubId ->
+        let model' =
+            { model with
+                  clubId = clubId
+                  activeTerm = ""
+                  terms = []
+                  isReady = false }
+
         let cmdUpdateRecentTags =
-            Cmd.OfAsync.either updateSearchLocalStorage (localStorage, model) RecentTermsUpdated       raise
-        model, cmdUpdateRecentTags
-    | LoadLinks (term, activeSection) -> { model with activeTerm = term; activeSection = activeSection }, Cmd.none
+            Cmd.OfAsync.either
+                updateSearchLocalStorage
+                (localStorage, model')
+                RecentTermsUpdated
+                raise
+
+        model', cmdUpdateRecentTags
+
+    | LoadLinks (term, activeSection) ->
+        { model with
+              activeTerm = term
+              activeSection = activeSection },
+        Cmd.none
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -88,15 +122,16 @@ type Component() =
     override _.View model dispatch =
         forEach model.terms (fun t ->
             let isActive =
-                match model.activeTerm = t && model.activeSection = Search with
+                match model.activeTerm = t
+                      && model.activeSection = Search with
                 | true -> Bulma.``is-active``
                 | false -> String.Empty
 
-            ComponentsTemplate.MenuRecentSearchItem()
-                .Name(t)
-                .ActiveClass(isActive)
-                .LoadLinks(fun _ -> (dispatch (LoadLinks (t, MenuSection.Search))))
-                .Elt())
+            ComponentsTemplate.MenuRecentSearchItem().Name(t)
+                              .ActiveClass(isActive)
+                              .LoadLinks(fun _ ->
+                              (dispatch (LoadLinks(t, MenuSection.Search))))
+                              .Elt())
 
 let view (model: Model) (activeSection: MenuSection) dispatch =
     ecomp<Component, _, _>

@@ -1,0 +1,87 @@
+<template id="ClubSettingsTabControl">
+    <div class="tabs is-centered is-boxed">
+        <ul>
+            ${TabHeaders}
+        </ul>
+    </div>
+    ${TabContent}
+    </div>
+</template>
+
+<template id="ClubSettingsTabHeader">
+    <li class="${TabClass}">
+        <a onclick="${ChangeTab}">
+            <span class="icon is-small"><i class="${IClass}" aria-hidden="true"></i></span>
+            <span>${Text}</span>
+        </a>
+    </li>
+</template>
+
+<template id="ClubSettingTabContentGeneral">
+    <span>ClubSettingTabContentGeneral</span>
+</template>
+
+<template id="ClubSettingTabContentApps">
+    <span>ClubSettingTabContentApps</span>
+</template>
+
+
+<template id="ClubSettingTabContentMembers">
+    <div class="content">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Members</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${Members}
+            </tbody>
+        </table>
+    </div>
+</template>
+
+<template id="RowMember">
+    <tr>
+        <td>${DisplayName}</td>
+    </tr>
+</template>
+
+
+<template id="ClubSettingTabContentDangerZone">
+    <div class="content">
+        <nav class="level">
+            <!-- Left side -->
+            <div class="level-left">
+                <div class="level-item">
+                    <div>
+                        <p class="title is-4">Leave club</p>
+                        <p>I want to leave the club</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right side -->
+            <div class="level-right">
+                <button class="button is-danger" onclick="${LeaveClub}">Leave</button></div>
+    </div>
+    </nav>
+    ${ConfirmLeaveProtectedClub}
+    </div>
+</template>
+
+<template id="ConfirmLeaveProtectedClub">
+    <article class="message is-danger">
+        <div class="message-header">
+            <p>Are you sure that you want to leave from ${ClubName}?</p>
+        </div>
+        <div class="message-body">
+            You won't be able to subscribe again to a protected club unless you are invited.
+        </div>
+        <footer class="card-footer">
+            <button class="button card-footer-item" onclick="${DismissConfirmation}">No, I want to stay</button>
+            <button class="button card-footer-item is-danger" onclick="${ForceLeave}">Yes I am
+                sure</button>
+        </footer>
+    </article>
+</template>

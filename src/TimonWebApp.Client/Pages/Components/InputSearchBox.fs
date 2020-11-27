@@ -6,7 +6,7 @@ open System.Net
 open Bolero
 open Elmish
 open TimonWebApp.Client.Common
-open TimonWebApp.Client.Pages.Controls
+open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 open Bolero.Html
@@ -14,9 +14,7 @@ open Bolero.Html
 
 type Model =
     { term: string }
-    static member Default = {
-        term = String.Empty
-    }
+    static member Default = { term = String.Empty }
 
 type Message =
     | SetField of string
@@ -24,8 +22,7 @@ type Message =
 
 let update (timonService: TimonService) (message: Message) (model: Model) =
     match message, model with
-    | SetField (value), _ ->
-        { model with term = value.Trim() }, Cmd.none
+    | SetField (value), _ -> { model with term = value.Trim() }, Cmd.none
     | _, _ -> model, Cmd.none
 
 
@@ -35,16 +32,11 @@ type Component() =
     override _.View model dispatch =
         let formFieldItem = inputSearch
 
-        let inputCallback =
-            fun v -> dispatch (SetField(v))
+        let inputCallback = fun v -> dispatch (SetField(v))
 
         let buttonAction = fun _ -> dispatch (Search model.term)
 
         formFieldItem model.term inputCallback buttonAction
 
 
-let view (model: Model) dispatch =
-    ecomp<Component, _, _>
-        []
-        model
-        dispatch
+let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch

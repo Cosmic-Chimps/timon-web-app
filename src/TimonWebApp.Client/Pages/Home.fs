@@ -18,7 +18,7 @@ type Model =
       clubLinkViewListModel: ClubLinkViewList.Model
       searchBoxModel: SearchBox.Model
       clubSidebarModel: ClubSidebar.Model
-      homeSidebar: HomeSidebar.Model
+      homeSidebarModel: HomeSidebar.Model
       clubName: string
       clubId: Guid
       channelName: string
@@ -33,7 +33,7 @@ type Model =
           clubLinkViewListModel = ClubLinkViewList.Model.Default
           addLinkBoxModel = AddLinkBox.Model.Default
           searchBoxModel = SearchBox.Model.Default
-          homeSidebar = HomeSidebar.Model.Default
+          homeSidebarModel = HomeSidebar.Model.Default
           clubSidebarModel = ClubSidebar.Model.Default
           channelName = "all"
           channelId = Guid.Empty
@@ -102,7 +102,7 @@ let update (jsRuntime: IJSRuntime)
                 model.clubLinkViewListModel
 
         let homeSideBarModel =
-            { model.homeSidebar with
+            { model.homeSidebarModel with
                   clubId = clubId
                   channelId = channelId }
 
@@ -144,7 +144,7 @@ let update (jsRuntime: IJSRuntime)
               searchBoxModel = searchBoxModel
               activeMenuSection = MenuSection.Channel
               clubLinkViewListModel = clubLinkViewListModel
-              homeSidebar = homeSideBarModel
+              homeSidebarModel = homeSideBarModel
               clubSidebarModel = clubSidebarModel },
         Cmd.batch batchCmds
 
@@ -192,7 +192,7 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 homeSidebarMessage
-                model.homeSidebar
+                model.homeSidebarModel
 
         let batchCmds =
             [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
@@ -202,7 +202,7 @@ let update (jsRuntime: IJSRuntime)
               tagName = tag
               activeMenuSection = MenuSection.Tag
               searchBoxModel = searchBoxModel
-              homeSidebar = homeSidebar
+              homeSidebarModel = homeSidebar
               clubLinkViewListModel = clubLinkViewListModel },
         Cmd.batch batchCmds
 
@@ -234,7 +234,7 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 homeSidebarMessage
-                model.homeSidebar
+                model.homeSidebarModel
 
         let batchCmds =
             [ Cmd.map ClubLinkViewItemMsg clubLinkViewListCmd ]
@@ -244,7 +244,7 @@ let update (jsRuntime: IJSRuntime)
               term = term
               activeMenuSection = MenuSection.Search
               clubLinkViewListModel = clubLinkViewListModel
-              homeSidebar = homeSidebar
+              homeSidebarModel = homeSidebar
               searchBoxModel = searchBoxModel },
         Cmd.batch batchCmds
 
@@ -277,15 +277,15 @@ let update (jsRuntime: IJSRuntime)
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.LoadLinksByTag (tag)), _ ->
         let channelMenuModel =
-            { model.homeSidebar.channelMenuModel with
+            { model.homeSidebarModel.channelMenuModel with
                   activeChannelId = Guid.Empty }
 
         let homeSidebar =
-            { model.homeSidebar with
+            { model.homeSidebarModel with
                   channelMenuModel = channelMenuModel }
 
         { model with
-              homeSidebar = homeSidebar
+              homeSidebarModel = homeSidebar
               activeMenuSection = MenuSection.Tag },
         Cmd.ofMsg (LoadClubLinksByTag(tag, 0))
 
@@ -293,15 +293,15 @@ let update (jsRuntime: IJSRuntime)
                                                                channel)),
       _ ->
         let channelMenuModel =
-            { model.homeSidebar.channelMenuModel with
+            { model.homeSidebarModel.channelMenuModel with
                   activeChannelId = channelId }
 
         let homeSidebar =
-            { model.homeSidebar with
+            { model.homeSidebarModel with
                   channelMenuModel = channelMenuModel }
 
         { model with
-              homeSidebar = homeSidebar
+              homeSidebarModel = homeSidebar
               activeMenuSection = MenuSection.Channel },
         Cmd.ofMsg
             (LoadClubLinks
@@ -345,7 +345,7 @@ let update (jsRuntime: IJSRuntime)
 
         let loadTagsMessage =
             HomeSidebar.Message.RecentTagsMenuMsg
-                (RecentTagsMenu.Message.LoadTags)
+                (RecentTagsMenu.Message.LoadTags(model.clubId))
 
         let homeSidebarModel, cmdUpdateRecentTags =
             HomeSidebar.update
@@ -353,16 +353,16 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 loadTagsMessage
-                model.homeSidebar
+                model.homeSidebarModel
 
         let model' =
             { model with
-                  homeSidebar = homeSidebarModel }
+                  homeSidebarModel = homeSidebarModel }
 
 
         let loadTermsMessage =
             HomeSidebar.Message.RecentSearchMenuMsg
-                (RecentSearchMenu.Message.LoadTerms)
+                (RecentSearchMenu.Message.LoadTerms(model.clubId))
 
         let homeSidebarModel', cmdUpdateRecentTerms =
             HomeSidebar.update
@@ -370,7 +370,7 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 loadTermsMessage
-                model'.homeSidebar
+                model'.homeSidebarModel
 
         jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
         |> Async.AwaitTask
@@ -379,7 +379,7 @@ let update (jsRuntime: IJSRuntime)
         { model with
               clubLinkViewListModel = clubLinkViewListModel
               addLinkBoxModel = addLinkBoxModel
-              homeSidebar = homeSidebarModel'
+              homeSidebarModel = homeSidebarModel'
               page = data.Page
               // homeSidebar = homeSidebar
               showNext = data.ShowNext },
@@ -442,7 +442,7 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 msg
-                model.homeSidebar
+                model.homeSidebarModel
 
         let loadClubLinksArgs =
             shouldLoadChannels,
@@ -456,7 +456,9 @@ let update (jsRuntime: IJSRuntime)
             [ Cmd.map HomeSidebarMsg cmd
               Cmd.ofMsg (LoadClubLinks loadClubLinksArgs) ]
 
-        { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
+        { model with
+              homeSidebarModel = homeSidebar },
+        Cmd.batch cmdBatchs
 
     | HomeSidebarMsg (HomeSidebar.Message.LoadLinksByTag (tag, page)), _ ->
 
@@ -469,13 +471,15 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 msg
-                model.homeSidebar
+                model.homeSidebarModel
 
         let cmdBatchs =
             [ Cmd.map HomeSidebarMsg cmd
               Cmd.ofMsg (LoadClubLinksByTag(tag, page)) ]
 
-        { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
+        { model with
+              homeSidebarModel = homeSidebar },
+        Cmd.batch cmdBatchs
 
     | HomeSidebarMsg (HomeSidebar.Message.LoadLinksBySearch (term, page)), _ ->
         let msg =
@@ -487,13 +491,15 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 msg
-                model.homeSidebar
+                model.homeSidebarModel
 
         let cmdBatchs =
             [ Cmd.map HomeSidebarMsg cmd
               Cmd.ofMsg (LoadClubLinksSearch(term, page)) ]
 
-        { model with homeSidebar = homeSidebar }, Cmd.batch cmdBatchs
+        { model with
+              homeSidebarModel = homeSidebar },
+        Cmd.batch cmdBatchs
 
     | HomeSidebarMsg msg, _ ->
         let m, cmd =
@@ -502,9 +508,9 @@ let update (jsRuntime: IJSRuntime)
                 timonService
                 localStorage
                 msg
-                model.homeSidebar
+                model.homeSidebarModel
 
-        { model with homeSidebar = m }, Cmd.map HomeSidebarMsg cmd
+        { model with homeSidebarModel = m }, Cmd.map HomeSidebarMsg cmd
 
     | ClubSidebarMsg (ClubSidebar.Message.ChangeClub (clubView)), _ ->
         let cmd =
@@ -526,13 +532,24 @@ let update (jsRuntime: IJSRuntime)
                 clubMsg
                 model.clubSidebarModel
 
+        let homeSidebarMsg = HomeSidebar.Message.ResetComponents
+
+        let homeSidebarModel, _ =
+            HomeSidebar.update
+                jsRuntime
+                timonService
+                localStorage
+                homeSidebarMsg
+                model.homeSidebarModel
+
         let searchBoxModel =
             { model.searchBoxModel with
                   clubName = clubView.Name }
 
         { model with
               searchBoxModel = searchBoxModel
-              clubSidebarModel = clubSidebarModel },
+              clubSidebarModel = clubSidebarModel
+              homeSidebarModel = homeSidebarModel },
         cmd
 
     | ClubSidebarMsg (ClubSidebar.Message.NoClubs), _ ->
@@ -685,31 +702,37 @@ let anonymousListView model dispatch =
         (LinkViewItemMsg
          >> dispatch)
 
+let areAllComponentsReady model =
+    printfn "aaaaa %O" model.clubLinkViewListModel.isReady
+    printfn "zzzzz %O" (HomeSidebar.isReady model.homeSidebarModel)
+
+
+    model.clubLinkViewListModel.isReady
+    && HomeSidebar.isReady model.homeSidebarModel
+// && model.homeSidebar.channelMenuModel.isReady
+// && model.homeSidebar.recentSearchMenuModel.isReady
+// && model.homeSidebar.recentSearchMenuModel.isReady
+
 let view authState model dispatch =
     let hasClubs =
         model.clubSidebarModel.clubs.Length
         <> 0
 
-    if not
-        (model.clubLinkViewListModel.isReady
-         && model.homeSidebar.channelMenuModel.isReady
-         && model.homeSidebar.recentSearchMenuModel.isReady
-         && model.homeSidebar.recentSearchMenuModel.isReady)
+    if not (areAllComponentsReady model)
        && authState = AuthState.Success
        && hasClubs then
+        printfn "one"
         ComponentsTemplate.LoadingTemplate().Elt()
     else if not (model.anonymouslinkViewListModel.isReady)
             && authState
             <> AuthState.Success then
+        printfn "two"
         ComponentsTemplate.LoadingTemplate().Elt()
     else if not (model.anonymouslinkViewListModel.isReady)
             && authState = AuthState.Success
             && not hasClubs then
         ComponentsTemplate.LoadingTemplate().Elt()
     else
-
-        printfn "hasclubs %O" hasClubs
-
         let items =
             match authState with
             | AuthState.Success ->
@@ -740,7 +763,7 @@ let view authState model dispatch =
             | true ->
                 HomeSidebar.view
                     authState
-                    (model.homeSidebar)
+                    (model.homeSidebarModel)
                     (HomeSidebarMsg
                      >> dispatch)
             | false -> empty

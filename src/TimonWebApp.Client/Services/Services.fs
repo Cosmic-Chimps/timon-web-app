@@ -83,18 +83,25 @@ type GetClubLinkSearchParams =
       page: int }
 
 
+[<JsonFSharpConverter>]
+type GetClubMembers = { clubId: ClubId }
+
 #if DEBUG
 type GetLinksResultProvider =
-    JsonProvider<"http://localhost:5011/.meta/v12/get/links">
+    JsonProvider<"http://localhost:5011/.meta/v13/get/links">
 
 type ChannelViewProvider =
-    JsonProvider<"http://localhost:5011/.meta/v12/get/channels">
+    JsonProvider<"http://localhost:5011/.meta/v13/get/channels">
 
 type ClubViewProvider =
-    JsonProvider<"http://localhost:5011/.meta/v12/get/clubs">
+    JsonProvider<"http://localhost:5011/.meta/v13/get/clubs">
 
 type GetClubLinksResultProvider =
-    JsonProvider<"http://localhost:5011/.meta/v12/get/clubs/links">
+    JsonProvider<"http://localhost:5011/.meta/v13/get/clubs/links">
+
+type GetClubMembersResultProvider =
+    JsonProvider<"http://localhost:5011/.meta/v13/get/clubs/members">
+
 #else
 type GetLinksResultProvider =
     JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/v3/get/links">
@@ -103,10 +110,12 @@ type ChannelViewProvider =
     JsonProvider<"http://timon-api-gateway-openfaas-fn.127.0.0.1.nip.io/.meta/get/v3/channels">
 
 #endif
+
 type GetLinksResult = GetLinksResultProvider.Root
 type ChannelView = ChannelViewProvider.Root
 type ClubView = ClubViewProvider.Root
 type ClubListView = GetClubLinksResultProvider.Root
+type ClubMember = GetClubMembersResultProvider.Root
 
 type LinkService =
     { ``get-links``: GetLinkParams -> Async<string>
@@ -131,7 +140,7 @@ type ChannelService =
         member this.BasePath = "/channels"
 
 [<JsonFSharpConverter>]
-type CreateClubPayload = { name: string }
+type CreateClubPayload = { name: string; isProtected: bool }
 
 [<JsonFSharpConverter>]
 type SubscribeClubPayload = { id: Guid; name: string }
@@ -144,7 +153,8 @@ type ClubService =
       ``create-club``: CreateClubPayload -> Async<HttpStatusCode>
       ``subscribe-club``: SubscribeClubPayload -> Async<HttpStatusCode>
       ``unsubscribe-club``: UnSubscribeClubPayload -> Async<HttpStatusCode>
-      ``get-other-clubs``: unit -> Async<string> }
+      ``get-other-clubs``: unit -> Async<string>
+      ``get-members``: GetClubMembers -> Async<string> }
     interface IRemoteService with
         member this.BasePath = "/clubs"
 
@@ -245,3 +255,9 @@ let subscribeClub (timonService, payload) =
 
 let unsubscribeClub (timonService, payload) =
     async { return! timonService.clubService.``unsubscribe-club`` payload }
+
+let getMembers (timonService, queryParams) =
+    async {
+        let! resp = timonService.clubService.``get-members`` (queryParams)
+        return GetClubMembersResultProvider.Parse resp
+    }

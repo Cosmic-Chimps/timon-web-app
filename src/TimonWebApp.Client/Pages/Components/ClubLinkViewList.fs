@@ -6,7 +6,7 @@ open Elmish
 open Microsoft.AspNetCore.Components
 open Microsoft.JSInterop
 open TimonWebApp.Client.Common
-open TimonWebApp.Client.Pages
+open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 open System
@@ -302,7 +302,7 @@ type Component() =
                 let inputId = sprintf "tag_link_box_%O" l.view.Link.Id
 
                 let formFieldItem =
-                    Controls.inputAdd
+                    inputAdd
                         inputId
                         "Add new tag or more separated by commas"
                         Mdi.``mdi-tag-outline``
@@ -403,7 +403,7 @@ type Component() =
                                       .DomainName(l.view.Link.DomainName)
                                       .Date(l.view.Data.DateCreated.DateTime.ToString
                                                 ()).Via(l.view.Data.Via)
-                                      .SharedBy(l.view.User.Email)
+                                      .SharedBy(l.view.User.DisplayName)
                                       .OnViaClicked(fun _ ->
                                       dispatch
                                           (LoadLinksSearch(l.view.Data.Via)))

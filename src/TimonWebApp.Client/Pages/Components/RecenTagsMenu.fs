@@ -12,22 +12,25 @@ type Model =
     { tags: string list
       activeTag: string
       activeSection: MenuSection
-      isReady: bool }
+      isReady: bool
+      clubId: Guid }
     static member Default =
         { tags = List.empty
           activeTag = String.Empty
           activeSection = MenuSection.Tag
-          isReady = false }
+          isReady = false
+          clubId = Guid.Empty }
 
 type Message =
     | LoadLinks of string * MenuSection
-    | LoadTags
+    | LoadTags of Guid
     | RecentTagsUpdated of string list
 
 
 let updateTagsLocalStorage ((localStorage: ILocalStorageService), (model: Model)) =
     async {
-        let key = "timon_recent_tags"
+        let key =
+            sprintf "timon_recent_tags_%O" model.clubId
 
         let! exists =
             localStorage.ContainKeyAsync(key).AsTask()
@@ -35,10 +38,12 @@ let updateTagsLocalStorage ((localStorage: ILocalStorageService), (model: Model)
 
         match exists with
         | false ->
-            match model.activeTag <> String.Empty with
+            match model.activeTag
+                  <> String.Empty with
             | false -> return []
             | true ->
-                localStorage.SetItemAsync<string list>(key, [ model.activeTag ]).AsTask()
+                localStorage.SetItemAsync<string list>(key, [ model.activeTag ])
+                    .AsTask()
                 |> Async.AwaitTask
                 |> ignore
 
@@ -50,7 +55,8 @@ let updateTagsLocalStorage ((localStorage: ILocalStorageService), (model: Model)
 
             let recentTags = Json.deserialize (recentTagsJson)
 
-            match model.activeTag <> String.Empty with
+            match model.activeTag
+                  <> String.Empty with
             | false -> return recentTags
             | true ->
                 return recentTags
@@ -60,13 +66,19 @@ let updateTagsLocalStorage ((localStorage: ILocalStorageService), (model: Model)
                            | Some _ -> recentTags
                            | None _ ->
                                let recentTags' =
-                                   match recentTags.Length + 1 > 9 with
-                                   | false -> [ model.activeTag ] @ recentTags
+                                   match recentTags.Length
+                                         + 1 > 9 with
+                                   | false ->
+                                       [ model.activeTag ]
+                                       @ recentTags
                                    | true ->
                                        [ model.activeTag ]
-                                       @ recentTags.[..recentTags.Length - 2]
+                                       @ recentTags.[..recentTags.Length
+                                                       - 2]
 
-                               localStorage.SetItemAsync<string list>(key, recentTags').AsTask()
+                               localStorage.SetItemAsync<string list>(key,
+                                                                      recentTags')
+                                   .AsTask()
                                |> Async.AwaitTask
                                |> ignore
                                recentTags'
@@ -76,12 +88,26 @@ let updateTagsLocalStorage ((localStorage: ILocalStorageService), (model: Model)
 let update (localStorage: ILocalStorageService) msg model =
     match msg with
     | RecentTagsUpdated recentTags ->
-        { model with tags = recentTags; isReady = true }, Cmd.none
-    | LoadTags _ ->
+        { model with
+              tags = recentTags
+              isReady = true },
+        Cmd.none
+    | LoadTags clubId ->
+        let model' = { model with clubId = clubId }
+
         let cmdUpdateRecentTags =
-            Cmd.OfAsync.either updateTagsLocalStorage (localStorage, model) RecentTagsUpdated raise
-        model, cmdUpdateRecentTags
-    | LoadLinks (tag, activeSection) -> { model with activeTag = tag; activeSection = activeSection }, Cmd.none
+            Cmd.OfAsync.either
+                updateTagsLocalStorage
+                (localStorage, model')
+                RecentTagsUpdated
+                raise
+
+        model', cmdUpdateRecentTags
+    | LoadLinks (tag, activeSection) ->
+        { model with
+              activeTag = tag
+              activeSection = activeSection },
+        Cmd.none
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -89,12 +115,14 @@ type Component() =
     override _.View model dispatch =
         forEach model.tags (fun t ->
             let isActive =
-                match model.activeTag = t && model.activeSection = Tag with
+                match model.activeTag = t
+                      && model.activeSection = Tag with
                 | true -> Bulma.``is-active``
                 | false -> String.Empty
 
-            ComponentsTemplate.MenuTagItem().Name(t).ActiveClass(isActive).LoadLinks(fun _ -> (dispatch (LoadLinks (t, MenuSection.Tag))))
-                              .Elt())
+            ComponentsTemplate.MenuTagItem().Name(t).ActiveClass(isActive)
+                              .LoadLinks(fun _ ->
+                              (dispatch (LoadLinks(t, MenuSection.Tag)))).Elt())
 
 let view (model: Model) (activeSection: MenuSection) dispatch =
     ecomp<Component, _, _>

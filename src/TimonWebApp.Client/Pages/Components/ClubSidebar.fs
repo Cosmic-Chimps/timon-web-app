@@ -6,12 +6,13 @@ open TimonWebApp.Client.Services
 open TimonWebApp.Client.Common
 open Bolero.Html
 open Microsoft.JSInterop
-open TimonWebApp.Client.Pages
+open TimonWebApp.Client.Pages.Controls
+open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Validation
 open System.Net
 open System
 
-type ClubForm = { name: string }
+type ClubForm = { name: string; isProtected: bool }
 
 type Model =
     { sidebarClass: string
@@ -21,25 +22,27 @@ type Model =
       otherClubs: ClubView array
       activeClubId: Guid
       errorsValidateForm: Result<ClubForm, Map<string, string list>> option
-      isShowingWarningUnsubscribePrivateClub: bool
-      clubFromUnsubscribe: ClubView option }
+      clubToSubscribe: ClubView option
+      clubSettings: ClubView option
+      clubSettingsTabControlModel: ClubSettingsTabControl.Model }
 
     static member Default =
         { sidebarClass = ""
           isAddingClub = false
-          clubForm = { name = "" }
+          clubForm = { name = ""; isProtected = false }
           errorsValidateForm = None
           clubs = [||]
           otherClubs = [||]
           activeClubId = Guid.Empty
-          isShowingWarningUnsubscribePrivateClub = false
-          clubFromUnsubscribe = None }
-
+          clubToSubscribe = None
+          clubSettings = None
+          clubSettingsTabControlModel = ClubSettingsTabControl.Model.Default }
 
 type Message =
     | ToggleSidebarVisibility
     | ToggleClubForm
     | SetFormField of string * string
+    | SetFormIsProtected of bool
     | ValidateForm
     | AddClub
     | ClubAdded of HttpStatusCode
@@ -52,10 +55,10 @@ type Message =
     | UnSubscribeClub of ClubView
     | ClubUnSubscribed of HttpStatusCode
     | SetActiveClubId of Guid
-    | UnSubscribeClubVerifyIsPrivate of ClubView
-    | DismissModal
-    | ForceUnsubscribe
+    | DismissSettingsModal
     | NoClubs
+    | OpenClubSettings of ClubView
+    | ClubSettingsTabControlMsg of ClubSettingsTabControl.Message
 
 let validateClubForm (clubForm) =
     let validateName (validator: Validator<string>) name value =
@@ -66,7 +69,9 @@ let validateClubForm (clubForm) =
         |> validator.End
 
     all
-    <| fun t -> { name = validateName t "Name" clubForm.name }
+    <| fun t ->
+        { name = validateName t "Name" clubForm.name
+          isProtected = clubForm.isProtected }
 
 
 let update (jsRuntime: IJSRuntime)
@@ -117,13 +122,22 @@ let update (jsRuntime: IJSRuntime)
 
     | SetFormField (_, value), _ -> model, Cmd.none
 
+    | SetFormIsProtected value, _ ->
+        let clubForm =
+            { model.clubForm with
+                  isProtected = value }
+
+        { model with clubForm = clubForm }, Cmd.none
+
     | ValidateForm, _ ->
         model.clubForm
         |> validateFormForced,
         Cmd.ofMsg (AddClub)
 
     | AddClub, _ ->
-        let payload: CreateClubPayload = { name = model.clubForm.name }
+        let payload: CreateClubPayload =
+            { name = model.clubForm.name
+              isProtected = model.clubForm.isProtected }
 
         let cmd =
             Cmd.OfAsync.either
@@ -135,7 +149,11 @@ let update (jsRuntime: IJSRuntime)
         model, cmd
 
     | ClubAdded _, _ ->
-        let clubForm = { model.clubForm with name = "" }
+        let clubForm =
+            { model.clubForm with
+                  name = ""
+                  isProtected = false }
+
         { model with
               isAddingClub = false
               clubForm = clubForm },
@@ -176,20 +194,19 @@ let update (jsRuntime: IJSRuntime)
                 ClubSubscribed
                 raise
 
-        model, cmd
+        { model with
+              clubToSubscribe = Some clubView },
+        cmd
 
-    | ClubSubscribed _, _ -> model, Cmd.ofMsg LoadClubs
+    | ClubSubscribed _, _ ->
+        let changeClubCmd =
+            match model.clubToSubscribe with
+            | None -> Cmd.none
+            | Some clubView -> Cmd.ofMsg (ChangeClub clubView)
 
-    | UnSubscribeClubVerifyIsPrivate clubView, _ ->
-        match clubView.IsPublic with
-        | true ->
-            let unsubscribeCmd = Cmd.ofMsg (UnSubscribeClub clubView)
-            model, unsubscribeCmd
-        | false ->
-            { model with
-                  isShowingWarningUnsubscribePrivateClub = true
-                  clubFromUnsubscribe = Some clubView },
-            Cmd.none
+        let cmds = [| Cmd.ofMsg LoadClubs; changeClubCmd |]
+
+        { model with clubToSubscribe = None }, Cmd.batch cmds
 
     | UnSubscribeClub clubView, _ ->
         let payload: UnSubscribeClubPayload =
@@ -222,28 +239,62 @@ let update (jsRuntime: IJSRuntime)
 
         model, Cmd.batch cmds
 
-    | ClubUnSubscribed _, _ -> model, Cmd.ofMsg LoadClubs
+    | ClubUnSubscribed _, _ ->
+        let dismissCmd = Cmd.ofMsg DismissSettingsModal
+        let loadClubsCmd = Cmd.ofMsg LoadClubs
+        model, Cmd.batch [| dismissCmd; loadClubsCmd |]
 
     | SetActiveClubId clubId, _ ->
         { model with activeClubId = clubId }, Cmd.none
 
-    | DismissModal, _ ->
+    | DismissSettingsModal, _ ->
+        let clubSettingsTabControlMsg =
+            ClubSettingsTabControl.Message.ResetModel
+
+        let clubSettingsTabControlModel, _ =
+            ClubSettingsTabControl.update
+                timonService
+                model.clubSettingsTabControlModel
+                clubSettingsTabControlMsg
+
         { model with
-              isShowingWarningUnsubscribePrivateClub = false
-              clubFromUnsubscribe = None },
+              clubSettings = None
+              clubSettingsTabControlModel = clubSettingsTabControlModel },
         Cmd.none
 
-    | ForceUnsubscribe, _ ->
-        let unsubscribeCmd =
-            match model.clubFromUnsubscribe with
-            | None -> Cmd.none
-            | Some c -> Cmd.ofMsg (UnSubscribeClub c)
+    | NoClubs, _ -> model, Cmd.none
+
+    | OpenClubSettings clubView, _ ->
+        let clubSettingsTabControlMsg =
+            ClubSettingsTabControl.Message.SetClub clubView
+
+        let clubSettingsTabControlModel, cmd =
+            ClubSettingsTabControl.update
+                timonService
+                model.clubSettingsTabControlModel
+                clubSettingsTabControlMsg
 
         { model with
-              isShowingWarningUnsubscribePrivateClub = false
-              clubFromUnsubscribe = None },
-        unsubscribeCmd
-    | NoClubs, _ -> model, Cmd.none
+              clubSettings = Some clubView
+              clubSettingsTabControlModel = clubSettingsTabControlModel },
+        Cmd.map ClubSettingsTabControlMsg cmd
+
+    | ClubSettingsTabControlMsg (ClubSettingsTabControl.Message.LeaveClub clubView),
+      _ ->
+        let unsubscribeCmd = Cmd.ofMsg (UnSubscribeClub clubView)
+
+        { model with clubSettings = None }, unsubscribeCmd
+
+    | ClubSettingsTabControlMsg msg, _ ->
+        let clubSettingsTabModal, cmd =
+            ClubSettingsTabControl.update
+                timonService
+                model.clubSettingsTabControlModel
+                msg
+
+        { model with
+              clubSettingsTabControlModel = clubSettingsTabModal },
+        Cmd.map ClubSettingsTabControlMsg cmd
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -251,7 +302,7 @@ type Component() =
     override _.View model dispatch =
 
         let formFieldItem =
-            Controls.inputAdd
+            inputAdd
                 "club_new_input"
                 "Add new club"
                 Mdi.``mdi-tree``
@@ -263,15 +314,27 @@ type Component() =
 
         let buttonAction = (fun _ -> dispatch ValidateForm)
 
-        let inputBox, mdiIcon =
+        let clubForm, mdiIcon =
             match model.isAddingClub with
             | true ->
-                (formFieldItem
-                    "Name"
-                     model.clubForm.name
-                     inputCallback
-                     buttonAction,
-                 Mdi.``mdi-minus-circle-outline``)
+                let inputBox =
+                    formFieldItem
+                        "Name"
+                        model.clubForm.name
+                        inputCallback
+                        buttonAction
+
+                let form =
+                    ComponentsTemplate.ClubForm().ClubInput(inputBox)
+                                      .ClubFormIsProtected(model.clubForm.isProtected,
+                                                           (fun n ->
+                                                               dispatch
+                                                                   (SetFormIsProtected
+                                                                       n)))
+                                      .Elt()
+
+                (form, Mdi.``mdi-minus-circle-outline``)
+
             | false -> (empty, Mdi.``mdi-plus-circle-outline``)
 
         let icon =
@@ -298,35 +361,37 @@ type Component() =
             ComponentsTemplate.ClubLink().Name(club.Name)
                               .ChangeClub(fun c -> dispatch (ChangeClub(club)))
                               .ActiveClass(mainDivClass)
-                              .UnSubscribeFromClub(fun c ->
-                              dispatch (UnSubscribeClubVerifyIsPrivate(club)))
-                              .Elt()
+                              .OpenClubSettings(fun c ->
+                              dispatch (OpenClubSettings(club))).Elt()
 
         let subscribeOtherClub (club: ClubView) =
             ComponentsTemplate.OtherClubLink().Name(club.Name)
                               .SubscribeToClub(fun c ->
                               dispatch (SubscribeClub(club))).Elt()
 
-        let modalActiveClass =
-            match model.isShowingWarningUnsubscribePrivateClub with
-            | true -> "is-active"
-            | _ -> ""
+        let clubSettingsModal =
+            match model.clubSettings with
+            | None -> empty
+            | Some c ->
+                let tabControl =
+                    ClubSettingsTabControl.view
+                        model.clubSettingsTabControlModel
+                        (ClubSettingsTabControlMsg
+                         >> dispatch)
 
-        let clubFromUnsubscribeName =
-            match model.clubFromUnsubscribe with
-            | Some c -> c.Name
-            | None -> ""
+                ComponentsTemplate.ClubSettingsModal().ClubName(c.Name)
+                                  .DismissModal(fun _ ->
+                                  dispatch DismissSettingsModal)
+                                  .ClubSettingsTabControl(tabControl).Elt()
+
 
         ComponentsTemplate.ClubSidebar().SidebarClass(model.sidebarClass)
                           .ToggleVisibility(fun _ ->
                           (dispatch ToggleSidebarVisibility)).Icon(icon)
-                          .ClubInput(inputBox)
+                          .ClubForm(clubForm)
                           .PublicClubs(forEach publicClubs showClub)
                           .PrivateClubs(forEach privateClubs showClub)
-                          .ModalActiveClass(modalActiveClass)
-                          .DismissModal(fun _ -> dispatch DismissModal)
-                          .ForceUnsubscribe(fun c -> dispatch ForceUnsubscribe)
-                          .ModalClubNameUnsubscribe(clubFromUnsubscribeName)
+                          .ClubSettingsModal(clubSettingsModal)
                           .OtherClubs(forEach
                                           model.otherClubs
                                           subscribeOtherClub).Elt()

@@ -3,8 +3,11 @@ module TimonWebApp.Client.Common
 open System.Text.Json.Serialization
 open Zanaptak.TypedCssClasses
 
-type Bulma = CssClasses<"https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css", Naming.Verbatim>
-type Mdi = CssClasses<"https://cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css", Naming.Verbatim>
+type Bulma =
+    CssClasses<"https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css", Naming.Verbatim>
+
+type Mdi =
+    CssClasses<"https://cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css", Naming.Verbatim>
 
 open Elmish
 open System
@@ -39,6 +42,7 @@ type State =
       Configuration: ConfigurationState }
 
 type ComponentsTemplate = Template<"wwwroot/components.html">
+type ControlsTemplate = Template<"wwwroot/controls.html">
 
 type MenuSection =
     | Channel

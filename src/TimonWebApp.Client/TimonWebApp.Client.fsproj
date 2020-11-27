@@ -11,7 +11,8 @@
         <Compile Include="BoleroHelpers.fs" />
         <Compile Include="Validation.fs" />
         <Compile Include="Services\Services.fs" />
-        <Compile Include="Pages\Controls.fs" />
+        <Compile Include="Pages\Controls\Controls.fs" />
+        <Compile Include="Pages\Controls\ClubSettingsTabControl.fs" />
         <Compile Include="Pages\Components\AddLinkBox.fs" />
         <Compile Include="Pages\Components\ChannelMenu.fs" />
         <Compile Include="Pages\Components\ChannelMenuForm.fs" />
@@ -31,9 +32,9 @@
         <PackageReference Include="Blazored.LocalStorage" Version="3.0.0" />
         <PackageReference Include="FSharp.Data" Version="3.3.3" />
         <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
-        <PackageReference Include="Bolero" Version="0.*" />
-        <PackageReference Include="Bolero.Build" Version="0.*" />
-        <PackageReference Include="Bolero.HotReload" Version="0.*" />
+        <PackageReference Include="Bolero" Version="0.15.23" />
+        <PackageReference Include="Bolero.Build" Version="0.15.23" />
+        <PackageReference Include="Bolero.HotReload" Version="0.15.4" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="3.2.0" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="3.2.*" />
         <PackageReference Include="Zanaptak.TypedCssClasses" Version="0.4.0" />

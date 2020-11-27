@@ -7,6 +7,7 @@ open Microsoft.JSInterop
 open TimonWebApp.Client.BoleroHelpers
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages
+open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 
@@ -39,13 +40,19 @@ let init _ = Model.Default, Cmd.none
 let validateForm (form: LoginRequest) =
     let cannotBeBlank (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank(name + " cannot be blank")
+        |> validator.NotBlank
+            (name
+             + " cannot be blank")
         |> validator.End
 
     let validEmail (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank(name + " cannot be blank")
-        |> validator.IsMail(name + " should be an email format")
+        |> validator.NotBlank
+            (name
+             + " cannot be blank")
+        |> validator.IsMail
+            (name
+             + " should be an email format")
         |> validator.End
 
     all
@@ -87,7 +94,9 @@ let update (timonService: TimonService) message model =
     | _, ({ validatedLogin = Some (Error _) }) -> model, Cmd.none
 
     | DoLogin, _ ->
-        model.currentLogin |> validateForced, Cmd.ofMsg (LoginValidated)
+        model.currentLogin
+        |> validateForced,
+        Cmd.ofMsg (LoginValidated)
 
     | LoginValidated, _ ->
         let loginRequest =
@@ -95,11 +104,23 @@ let update (timonService: TimonService) message model =
               password = model.currentLogin.password }
 
 
-        { model with isLoading = true }, Cmd.OfAsync.either logIn (timonService, loginRequest) LoginSuccess LoginError
+        { model with isLoading = true },
+        Cmd.OfAsync.either
+            logIn
+            (timonService, loginRequest)
+            LoginSuccess
+            LoginError
 
     | LoginSuccess _, _ ->
-        let currentLoginForm = { model.currentLogin with email = String.Empty; password = String.Empty }
-        { model with isLoading = false; currentLogin = currentLoginForm }, Cmd.none
+        let currentLoginForm =
+            { model.currentLogin with
+                  email = String.Empty
+                  password = String.Empty }
+
+        { model with
+              isLoading = false
+              currentLogin = currentLoginForm },
+        Cmd.none
 
     //    | LoginSuccess value, _ ->
 //        match value with
@@ -108,7 +129,8 @@ let update (timonService: TimonService) message model =
 
     | LoginError _, _ ->
         { model with
-              failureReason = Some "Verify your email or password"; isLoading = false },
+              failureReason = Some "Verify your email or password"
+              isLoading = false },
         Cmd.none
 
     | _ -> failwith ""
@@ -133,7 +155,9 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                                Bulma.``is-8``
                                Bulma.``is-offset-2`` ] ] [
                     h1 [ attr.``class``
-                         <| String.concat " " [ Bulma.title; Bulma.``has-text-grey`` ] ] [
+                         <| String.concat
+                             " "
+                                [ Bulma.title; Bulma.``has-text-grey`` ] ] [
                         text "Log in"
                     ]
                     hr [ attr.``class`` "login-hr" ]
@@ -152,7 +176,9 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                         match model.failureReason with
                         | Some (value) ->
                             div [ attr.``class``
-                                  <| String.concat " " [ Bulma.``is-danger``; Bulma.message ] ] [
+                                  <| String.concat
+                                      " "
+                                         [ Bulma.``is-danger``; Bulma.message ] ] [
                                 div [ attr.``class`` Bulma.``message-header`` ] [
                                     text value
                                 ]
@@ -160,29 +186,45 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                         | None -> ()
 
                         let formFieldItem =
-                            Controls.formFieldItem model.validatedLogin model.focus model.isLoading
+                            formFieldItem
+                                model.validatedLogin
+                                model.focus
+                                model.isLoading
 
                         let pd name =
                             fun v -> dispatch (SetFormField(name, v))
 
                         div [] [
-                            concat [ comp<KeySubscriber> [] []
-                                     formFieldItem "email" "Email" model.currentLogin.email (pd "Email")
-                                     formFieldItem "password" "Password" model.currentLogin.password (pd "Password")
-                                     button [ attr.id "confirmButton"
-                                              attr.``class``
-                                              <| String.concat
-                                                  " "
-                                                     [ Bulma.button
-                                                       Bulma.``is-block``
-                                                       Bulma.``is-primary``
-                                                       Bulma.``is-large``
-                                                       Bulma.``is-fullwidth``
-                                                       if model.isLoading then Bulma.``is-loading`` else "" ]
-                                              attr.disabled model.isLoading
-                                              on.click (fun _ -> dispatch DoLogin) ] [
-                                         text "Log in"
-                                     ] ]
+                            concat [
+                                comp<KeySubscriber> [] []
+                                formFieldItem
+                                    "email"
+                                    "Email"
+                                    model.currentLogin.email
+                                    (pd "Email")
+                                formFieldItem
+                                    "password"
+                                    "Password"
+                                    model.currentLogin.password
+                                    (pd "Password")
+                                button [ attr.id "confirmButton"
+                                         attr.``class``
+                                         <| String.concat
+                                             " "
+                                                [ Bulma.button
+                                                  Bulma.``is-block``
+                                                  Bulma.``is-primary``
+                                                  Bulma.``is-large``
+                                                  Bulma.``is-fullwidth``
+                                                  if model.isLoading then
+                                                      Bulma.``is-loading``
+                                                  else
+                                                      "" ]
+                                         attr.disabled model.isLoading
+                                         on.click (fun _ -> dispatch DoLogin) ] [
+                                    text "Log in"
+                                ]
+                            ]
                         ]
                     ]
                     div [ attr.``class`` Bulma.columns ] [

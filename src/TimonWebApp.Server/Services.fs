@@ -19,6 +19,7 @@ open FSharp.Json
 open TimonWebApp.Client.Services
 open TimonWebApp.Server
 open FSharp.Data
+open System.Collections.Generic
 
 type TokenProvider = JsonProvider<Constants.tokenResponseJson>
 
@@ -37,7 +38,6 @@ let singInUser (ctx: IRemoteContext)
                (res: TokenProvider.Root)
                =
     async {
-        printf "%s" res.RefreshToken
         let refreshTokenProtected = protector.Protect(res.RefreshToken)
 
         let expiresAt =
@@ -63,6 +63,22 @@ let renewToken endpoint refreshTokenRequest =
     |> Async.RunSynchronously
     |> toText
     |> TokenProvider.Parse
+
+let getDisplayNameFromToken token =
+    let payload = Jose.JWT.Payload(token)
+
+    let map =
+        JsonSerializer.Deserialize<Dictionary<string, Object>>(payload)
+
+    match map.ContainsKey("timonUserDisplayName") with
+    | true -> map.["timonUserDisplayName"].ToString()
+    | false -> map.["email"].ToString()
+
+
+let getDisplayNameFromAccessToken (ctx: IRemoteContext) =
+    ctx.HttpContext.User.Claims
+    |> Seq.find (fun c -> c.Type = "TimonToken")
+    |> fun token -> getDisplayNameFromToken token.Value
 
 let getToken (ctx: IRemoteContext) (protector: IDataProtector) endpoint =
     async {
@@ -141,7 +157,8 @@ type AuthService(ctx: IRemoteContext,
                               | None -> None
 
                       return match result with
-                             | Some _ -> loginRequest.email
+                             | Some token -> getDisplayNameFromToken token
+
                              | None -> failwith "Not Found"
                   }
 
@@ -168,7 +185,7 @@ type AuthService(ctx: IRemoteContext,
                               | None -> None
 
                       return match result with
-                             | Some _ -> signUpRequest.email
+                             | Some token -> getDisplayNameFromToken token
                              | None -> failwith "Not Found"
                   }
 
@@ -177,13 +194,7 @@ type AuthService(ctx: IRemoteContext,
 
           ``get-user-name`` =
               ctx.Authorize
-              <| fun () ->
-                  async {
-                      return match ctx.HttpContext.TryUsername() with
-                             | Some email -> email
-                             | None -> ""
-                  //            return ctx.HttpContext.User.Identity.Name
-                  }
+              <| fun () -> async { return getDisplayNameFromAccessToken ctx }
 
           ``get-config`` =
               fun () ->
@@ -306,12 +317,6 @@ type LinkService(ctx: IRemoteContext,
           ``get-club-links-by-tag`` =
               ctx.Authorize
               <| fun queryParams ->
-                  printf
-                      "%s/clubs/%O/links/by-tag/%s?page=%i"
-                      endpoint
-                      queryParams.clubId
-                      queryParams.tagName
-                      queryParams.page
                   async {
                       let! authToken = getToken ctx protector endpoint
 
@@ -505,4 +510,22 @@ type ClubService(ctx: IRemoteContext,
                              }
                              |> Async.RunSynchronously
                              |> fun x -> x.statusCode
+                  }
+
+          ``get-members`` =
+              ctx.Authorize
+              <| fun queryParams ->
+                  async {
+                      let! authToken = getToken ctx protector endpoint
+
+                      return httpAsync {
+                                 GET
+                                     (sprintf
+                                         "%s/clubs/%O/members"
+                                          endpoint
+                                          queryParams.clubId)
+                                 Authorization(sprintf "Bearer %s" authToken)
+                             }
+                             |> Async.RunSynchronously
+                             |> toText
                   } }

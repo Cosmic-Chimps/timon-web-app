@@ -27,7 +27,8 @@ type Model =
       tagName: string
       showNext: bool
       term: string
-      activeMenuSection: MenuSection }
+      activeMenuSection: MenuSection
+      shouldReloadHomeSidebar: bool }
     static member Default =
         { anonymouslinkViewListModel = AnonymousLinkViewList.Model.Default
           clubLinkViewListModel = ClubLinkViewList.Model.Default
@@ -43,7 +44,8 @@ type Model =
           term = String.Empty
           activeMenuSection = MenuSection.Channel
           clubName = String.Empty
-          clubId = Guid.Empty }
+          clubId = Guid.Empty
+          shouldReloadHomeSidebar = true }
 
 type Message =
     // | LinksLoaded of GetLinksResult
@@ -53,7 +55,7 @@ type Message =
     | LoadClubLinksByTag of string * int
     | LoadClubLinksSearch of string * int
     | AddLinkBoxMsg of AddLinkBox.Message
-    | LinkViewItemMsg of AnonymousLinkViewList.Message
+    | AnonymousLinkViewItemMsg of AnonymousLinkViewList.Message
     | ClubLinkViewItemMsg of ClubLinkViewList.Message
     | SearchBoxMsg of SearchBox.Message
     | HomeSidebarMsg of HomeSidebar.Message
@@ -348,12 +350,15 @@ let update (jsRuntime: IJSRuntime)
                 (RecentTagsMenu.Message.LoadTags(model.clubId))
 
         let homeSidebarModel, cmdUpdateRecentTags =
-            HomeSidebar.update
-                jsRuntime
-                timonService
-                localStorage
-                loadTagsMessage
-                model.homeSidebarModel
+            match model.shouldReloadHomeSidebar with
+            | false -> model.homeSidebarModel, Cmd.none
+            | true ->
+                HomeSidebar.update
+                    jsRuntime
+                    timonService
+                    localStorage
+                    loadTagsMessage
+                    model.homeSidebarModel
 
         let model' =
             { model with
@@ -365,12 +370,15 @@ let update (jsRuntime: IJSRuntime)
                 (RecentSearchMenu.Message.LoadTerms(model.clubId))
 
         let homeSidebarModel', cmdUpdateRecentTerms =
-            HomeSidebar.update
-                jsRuntime
-                timonService
-                localStorage
-                loadTermsMessage
-                model'.homeSidebarModel
+            match model.shouldReloadHomeSidebar with
+            | false -> model.homeSidebarModel, Cmd.none
+            | true ->
+                HomeSidebar.update
+                    jsRuntime
+                    timonService
+                    localStorage
+                    loadTermsMessage
+                    model'.homeSidebarModel
 
         jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
         |> Async.AwaitTask
@@ -381,7 +389,7 @@ let update (jsRuntime: IJSRuntime)
               addLinkBoxModel = addLinkBoxModel
               homeSidebarModel = homeSidebarModel'
               page = data.Page
-              // homeSidebar = homeSidebar
+              shouldReloadHomeSidebar = false
               showNext = data.ShowNext },
         Cmd.batch [
             Cmd.map HomeSidebarMsg cmdUpdateRecentTags
@@ -549,7 +557,8 @@ let update (jsRuntime: IJSRuntime)
         { model with
               searchBoxModel = searchBoxModel
               clubSidebarModel = clubSidebarModel
-              homeSidebarModel = homeSidebarModel },
+              homeSidebarModel = homeSidebarModel
+              shouldReloadHomeSidebar = true },
         cmd
 
     | ClubSidebarMsg (ClubSidebar.Message.NoClubs), _ ->
@@ -699,7 +708,7 @@ let nextButton (model: Model) dispatch =
 let anonymousListView model dispatch =
     AnonymousLinkViewList.view
         model.anonymouslinkViewListModel
-        (LinkViewItemMsg
+        (AnonymousLinkViewItemMsg
          >> dispatch)
 
 let areAllComponentsReady model =

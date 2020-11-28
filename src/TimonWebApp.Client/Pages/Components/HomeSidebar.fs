@@ -109,12 +109,13 @@ let update (jsRuntime: IJSRuntime)
 
         { model with channelMenuFormModel = m }, Cmd.map ChannelMenuFormMsg cmd
 
-    | ChannelMenuMsg (ChannelMenu.Message.LoadLinks (channelId,
-                                                     channel,
-                                                     activeSection)),
+    | ChannelMenuMsg (ChannelMenu.Message.LoadChannelLinks (channelId,
+                                                            channel,
+                                                            activeSection)),
       _ ->
         let msg =
-            ChannelMenu.Message.LoadLinks(channelId, channel, activeSection)
+            ChannelMenu.Message.LoadChannelLinks
+                (channelId, channel, activeSection)
 
         let channelMenuModel, cmd =
             ChannelMenu.update msg model.channelMenuModel

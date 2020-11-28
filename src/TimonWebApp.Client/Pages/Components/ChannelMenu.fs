@@ -23,14 +23,20 @@ type Model =
 
 type Message =
     | OnChannelsLoaded of ChannelView array
-    | LoadLinks of ChannelId * string * MenuSection
+    | LoadChannelLinks of ChannelId * string * MenuSection
 
 let update (message: Message) model =
     match message with
     | OnChannelsLoaded channels ->
-        { model with channels = channels; isReady = true }, Cmd.none
-    | LoadLinks (activeChannelId, _, activeMenuSection) ->
-        { model with activeChannelId = activeChannelId; activeSection = activeMenuSection}, Cmd.none
+        { model with
+              channels = channels
+              isReady = true },
+        Cmd.none
+    | LoadChannelLinks (activeChannelId, _, activeMenuSection) ->
+        { model with
+              activeChannelId = activeChannelId
+              activeSection = activeMenuSection },
+        Cmd.none
 
 type Component() =
     inherit ElmishComponent<Model, Message>()
@@ -44,15 +50,11 @@ type Component() =
                 | true -> Bulma.``is-active``
                 | false -> ""
 
-            ComponentsTemplate
-                .ChannelItem()
-                .Name(l.Name)
-                .LoadLinks(fun _ -> (dispatch (LoadLinks(l.Id, l.Name, MenuSection.Channel))))
-                .ActiveClass(isActiveClass)
-                .Elt())
+            ComponentsTemplate.ChannelItem().Name(l.Name)
+                              .LoadLinks(fun _ ->
+                              (dispatch
+                                  (LoadChannelLinks
+                                      (l.Id, l.Name, MenuSection.Channel))))
+                              .ActiveClass(isActiveClass).Elt())
 
-let view (model: Model) dispatch =
-    ecomp<Component, _, _>
-        []
-        model
-        dispatch
+let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch

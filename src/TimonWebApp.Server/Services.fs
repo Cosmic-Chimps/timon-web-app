@@ -61,7 +61,7 @@ let renewToken endpoint refreshTokenRequest =
         json (Json.serialize refreshTokenRequest)
     }
     |> Async.RunSynchronously
-    |> toText
+    |> Response.toText
     |> TokenProvider.Parse
 
 let getDisplayNameFromToken token =
@@ -117,7 +117,7 @@ let hasResponseValidStatus response =
 
 let getResponseBodyAsText response =
     match response with
-    | Some r -> Some(toText r)
+    | Some r -> Some(Response.toText r)
     | None -> None
 
 let parseBodyAsObject<'T> (parse: string -> 'T) body =
@@ -224,7 +224,7 @@ type LinkService(ctx: IRemoteContext,
                                        queryParams.page)
                           }
 
-                      let links = response |> toText
+                      let links = response |> Response.toText
 
                       return links
                   }
@@ -247,7 +247,7 @@ type LinkService(ctx: IRemoteContext,
                               Authorization(sprintf "Bearer %s" authToken)
                           }
 
-                      let links = response |> toText
+                      let links = response |> Response.toText
 
                       return links
                   }
@@ -309,7 +309,7 @@ type LinkService(ctx: IRemoteContext,
                                        queryParams.page)
                           }
 
-                      let links = response |> toText
+                      let links = response |> Response.toText
 
                       return links
                   }
@@ -332,7 +332,7 @@ type LinkService(ctx: IRemoteContext,
                               Authorization(sprintf "Bearer %s" authToken)
                           }
 
-                      let links = response |> toText
+                      let links = response |> Response.toText
 
                       return links
                   }
@@ -376,7 +376,7 @@ type LinkService(ctx: IRemoteContext,
                               Authorization(sprintf "Bearer %s" authToken)
                           }
 
-                      let links = response |> toText
+                      let links = response |> Response.toText
 
                       return links
                   } }
@@ -404,7 +404,7 @@ type ChannelService(ctx: IRemoteContext,
                                  Authorization(sprintf "Bearer %s" authToken)
                              }
                              |> Async.RunSynchronously
-                             |> toText
+                             |> Response.toText
                   }
 
           ``create-channel`` =
@@ -447,7 +447,7 @@ type ClubService(ctx: IRemoteContext,
                                  Authorization(sprintf "Bearer %s" authToken)
                              }
                              |> Async.RunSynchronously
-                             |> toText
+                             |> Response.toText
                   }
 
           ``get-clubs`` =
@@ -461,7 +461,7 @@ type ClubService(ctx: IRemoteContext,
                                  Authorization(sprintf "Bearer %s" authToken)
                              }
                              |> Async.RunSynchronously
-                             |> toText
+                             |> Response.toText
                   }
 
           ``create-club`` =
@@ -527,5 +527,5 @@ type ClubService(ctx: IRemoteContext,
                                  Authorization(sprintf "Bearer %s" authToken)
                              }
                              |> Async.RunSynchronously
-                             |> toText
+                             |> Response.toText
                   } }

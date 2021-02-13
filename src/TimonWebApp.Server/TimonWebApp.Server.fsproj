@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <TargetFramework>net5.0</TargetFramework>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <DefineConstants>TRACE;DEBUG</DefineConstants>
@@ -13,14 +13,13 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Blazored.LocalStorage" Version="3.0.0" />
-        <PackageReference Include="SchlenkR.FsHttp" Version="3.1.0" />
+        <PackageReference Include="FSharp.Core" Version="5.0.1" />
+        <PackageReference Include="SchlenkR.FsHttp" Version="5.0.0" />
         <ProjectReference Include="..\TimonWebApp.Client\TimonWebApp.Client.fsproj" />
-        <PackageReference Include="Bolero.Server" Version="0.15.23" />
-        <PackageReference Include="Bolero.HotReload.Server" Version="0.15.4" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="3.2.*" />
-        <PackageReference
-        Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation"
-        Version="3.1.*" />
-        <PackageReference Include="jose-jwt" Version="2.6.1" />
+        <PackageReference Include="Bolero.Server" Version="0.16.27" />
+        <PackageReference Include="Bolero.HotReload.Server" Version="0.16.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="5.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="5.0.3" />
+        <PackageReference Include="jose-jwt" Version="3.0.0" />
     </ItemGroup>
 </Project>

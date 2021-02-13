@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <TargetFramework>net5.0</TargetFramework>
         <RazorLangVersion>3.0</RazorLangVersion>
         <LangVersion>preview</LangVersion>
         <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
@@ -32,12 +32,13 @@
         <PackageReference Include="Blazored.LocalStorage" Version="3.0.0" />
         <PackageReference Include="FSharp.Data" Version="3.3.3" />
         <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
-        <PackageReference Include="Bolero" Version="0.15.23" />
-        <PackageReference Include="Bolero.Build" Version="0.15.23" />
-        <PackageReference Include="Bolero.HotReload" Version="0.15.4" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="3.2.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="3.2.*" />
+        <PackageReference Include="Bolero" Version="0.16.27" />
+        <PackageReference Include="Bolero.Build" Version="0.16.27" />
+        <PackageReference Include="Bolero.HotReload" Version="0.16.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="3.2.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="5.0.3" />
         <PackageReference Include="Zanaptak.TypedCssClasses" Version="0.4.0" />
         <PackageReference Include="FSharp.Json" Version="0.4.0" />
+        <PackageReference Include="FSharp.Core" Version="5.0.1" />
     </ItemGroup>
 </Project>

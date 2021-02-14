@@ -51,10 +51,6 @@ type Message =
     | ResetComponents
 
 let isReady model =
-    printfn "bbbbb %O" model.channelMenuModel.isReady
-    printfn "ccccc %O" model.recentTagsMenuModel.isReady
-    printfn "ddddd %O" model.recentSearchMenuModel.isReady
-
     model.channelMenuModel.isReady
     && model.recentTagsMenuModel.isReady
     && model.recentSearchMenuModel.isReady

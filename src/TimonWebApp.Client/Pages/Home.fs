@@ -712,10 +712,6 @@ let anonymousListView model dispatch =
          >> dispatch)
 
 let areAllComponentsReady model =
-    printfn "aaaaa %O" model.clubLinkViewListModel.isReady
-    printfn "zzzzz %O" (HomeSidebar.isReady model.homeSidebarModel)
-
-
     model.clubLinkViewListModel.isReady
     && HomeSidebar.isReady model.homeSidebarModel
 // && model.homeSidebar.channelMenuModel.isReady

@@ -35,7 +35,7 @@
         <PackageReference Include="Bolero" Version="0.16.27" />
         <PackageReference Include="Bolero.Build" Version="0.16.27" />
         <PackageReference Include="Bolero.HotReload" Version="0.16.13" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="3.2.1" />
+        <!-- <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="5.0.0-preview.6.20312.15" /> -->
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="5.0.3" />
         <PackageReference Include="Zanaptak.TypedCssClasses" Version="0.4.0" />
         <PackageReference Include="FSharp.Json" Version="0.4.0" />

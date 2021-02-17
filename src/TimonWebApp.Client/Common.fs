@@ -42,7 +42,8 @@ type State =
       Configuration: ConfigurationState }
 
 type ComponentsTemplate = Template<"wwwroot/components.html">
-type ControlsTemplate = Template<"wwwroot/controls.html">
+type ClubSettingsTabControlsTemplate = Template<"wwwroot/clubSettingsTabControls.html">
+type ChannelSettingsTabControlsTemplate = Template<"wwwroot/channelSettingsTabControls.html">
 
 type MenuSection =
     | Channel

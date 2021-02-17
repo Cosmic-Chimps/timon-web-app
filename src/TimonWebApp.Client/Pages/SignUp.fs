@@ -10,6 +10,11 @@ open TimonWebApp.Client.Validation
 open TimonWebApp.Client.Pages.Controls.InputsHtml
 open Bolero.Html
 open Bolero
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
+open TimonWebApp.Client.JsonProviders
 
 type Model =
     { failureReason: string option

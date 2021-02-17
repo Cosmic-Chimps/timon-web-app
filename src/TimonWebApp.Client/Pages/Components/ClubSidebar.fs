@@ -11,6 +11,11 @@ open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Validation
 open System.Net
 open System
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
+
 
 type ClubForm = { name: string; isProtected: bool }
 

@@ -15,6 +15,10 @@ open TimonWebApp.Client.Services
 open TimonWebApp.Client
 open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages.Components
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
 
 /// Routing endpoints definition.
 type Page =

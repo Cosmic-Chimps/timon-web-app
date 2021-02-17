@@ -75,7 +75,30 @@
 </template>
 
 <template id="ChannelItem">
-    <li><a class="${ActiveClass}" onclick="${LoadLinks}">#${Name}</a></li>
+    <li class="menu-item">
+        <div class="columns ${ActiveClass}" style="cursor: pointer;" onclick="${LoadLinks}">
+            <div class="column is-vcentered ${ActiveClass}">
+                <a class="${ActiveClass}">#${Name}</a>
+            </div>
+            <!-- <div class="column ${ActiveClass}">
+                <a class="is-pulled-right" onClick="${ShowChannelSettings}">
+                    <i class="mdi mdi-cog"></i>
+            </div> -->
+        </div>
+    </li>
+</template>
+
+<template id="ChannelSection">
+    <ul class="menu-list">
+        <li class="menu-item">
+            <div class="columns ${AllActiveClass}">
+                <div class="column is-vcentered ${AllActiveClass}">
+                    <a class="${AllActiveClass}" onclick="${LoadAllLinks}">All</a>
+                </div>
+            </div>
+        </li>
+        ${ChannelListHole}
+    </ul>
 </template>
 
 
@@ -118,10 +141,8 @@
     <div class="column is-3">
         <aside class="is-medium menu">
             ${ChannelForm}
-            <ul class="menu-list">
-                <li><a class="${AllActiveClass}" onclick="${LoadAllLinks}">All</a></li>
-                ${ChannelListHole}
-            </ul>
+
+            ${ChannelListHole}
 
             <p class="menu-label">
                 Recent tags
@@ -248,7 +269,8 @@
                 <!-- <button class="button is-small is-danger is-pulled-right"
                     onclick="${UnSubscribeFromClub}">Unsubscribe</button></div> -->
                 <button class="button is-small has-background-light is-pulled-right"
-                    onclick="${OpenClubSettings}">Settings</button></div>
+                    onclick="${OpenClubSettings}">Settings</button>
+            </div>
         </div>
     </li>
 </template>
@@ -291,4 +313,23 @@
             </div>
         </div>
         </div>
+</template>
+
+<template id="ChannelSettingsModal">
+    <div class="modal is-active">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head has-background-info">
+                <p class="modal-card-title has-text-white">${ChannelName}</p>
+                <button class="delete" aria-label="delete" onclick="${DismissModal}"></button>
+            </header>
+            <section class="modal-card-body">
+                ${ChannelSettingsTabControl}
+            </section>
+            <!-- <footer class="modal-card-foot">
+              <button class="button is-success">Save changes</button>
+              <button class="button">Cancel</button>
+            </footer> -->
+        </div>
+    </div>
 </template>

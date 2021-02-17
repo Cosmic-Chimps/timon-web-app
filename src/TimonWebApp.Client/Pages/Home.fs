@@ -11,6 +11,7 @@ open TimonWebApp.Client.Common
 open TimonWebApp.Client.Pages.Components
 open TimonWebApp.Client.Pages.Components.AnonymousLinkViewList
 open TimonWebApp.Client.Services
+open TimonWebApp.Client.Pages.Controls
 
 type Model =
     { addLinkBoxModel: AddLinkBox.Model
@@ -28,7 +29,9 @@ type Model =
       showNext: bool
       term: string
       activeMenuSection: MenuSection
-      shouldReloadHomeSidebar: bool }
+      shouldReloadHomeSidebar: bool
+      showChannelModal: bool
+      channelSettingsTabControlModel: ChannelSettingsTabControl.Model }
     static member Default =
         { anonymouslinkViewListModel = AnonymousLinkViewList.Model.Default
           clubLinkViewListModel = ClubLinkViewList.Model.Default
@@ -45,7 +48,9 @@ type Model =
           activeMenuSection = MenuSection.Channel
           clubName = String.Empty
           clubId = Guid.Empty
-          shouldReloadHomeSidebar = true }
+          shouldReloadHomeSidebar = true
+          channelSettingsTabControlModel = ChannelSettingsTabControl.Model.Default
+          showChannelModal = false }
 
 type Message =
     // | LinksLoaded of GetLinksResult
@@ -61,6 +66,9 @@ type Message =
     | HomeSidebarMsg of HomeSidebar.Message
     | ClubSidebarMsg of ClubSidebar.Message
     | AnonymousLinkViewListMsg of AnonymousLinkViewList.Message
+    | OpenChannelSettings
+    | DismissSettingsModal
+    | ChannelSettingsTabControlMsg of ChannelSettingsTabControl.Message
 
 let init (_: IJSRuntime) (state: AuthState) =
     let cmdExecute =
@@ -610,6 +618,47 @@ let update (jsRuntime: IJSRuntime)
               activeMenuSection = MenuSection.Channel },
         Cmd.map AnonymousLinkViewListMsg cmd
 
+    | OpenChannelSettings _, _ ->
+        let channelSettingsTabControlMsg =
+            ChannelSettingsTabControl.Message.SetChannel (model.clubId, model.channelId, model.channelName)
+
+        let channelSettingsTabControlModel, cmd =
+            ChannelSettingsTabControl.update
+                timonService
+                model.channelSettingsTabControlModel
+                channelSettingsTabControlMsg
+
+        { model with
+              channelSettingsTabControlModel = channelSettingsTabControlModel
+              showChannelModal = true },
+        Cmd.map ChannelSettingsTabControlMsg cmd
+
+    | DismissSettingsModal _, _ ->
+        let channelSettingsTabControlMsg =
+            ChannelSettingsTabControl.Message.ResetModel
+
+        let channelSettingsTabControlModel, _ =
+            ChannelSettingsTabControl.update
+                timonService
+                model.channelSettingsTabControlModel
+                channelSettingsTabControlMsg
+
+        { model with
+              channelSettingsTabControlModel = channelSettingsTabControlModel
+              showChannelModal = false },
+        Cmd.none
+
+    | ChannelSettingsTabControlMsg msg, _ ->
+        let channelSettingsTabModal, cmd =
+            ChannelSettingsTabControl.update
+                timonService
+                model.channelSettingsTabControlModel
+                msg
+
+        { model with
+            channelSettingsTabControlModel = channelSettingsTabModal },
+        Cmd.map ChannelSettingsTabControlMsg cmd
+
 // | AnonymousLinkViewListMsg msg, _ ->
 //     let anonymouslinkViewListModel, cmd =
 //         AnonymousLinkViewList.update
@@ -788,20 +837,45 @@ let view authState model dispatch =
                         <| function
                         | true -> empty
                         | false ->
-                            h3 [ attr.``class``
-                                 <| String.concat
-                                     " "
-                                        [ Bulma.``is-3``
-                                          Bulma.``is-italic``
-                                          Bulma.title ] ] [
-                                text "channel: "
-                                span [ attr.``class``
-                                       <| String.concat
-                                           " "
-                                              [ Bulma.``has-text-weight-light``
-                                                Bulma.``is-italic`` ] ] [
-                                    text model.channelName
+                            div [
+                              attr.``class`` <| Bulma.columns
+                            ][
+                              div[
+                                attr.``class`` <| Bulma.column
+                              ][
+                                h3 [ attr.``class``
+                                     <| String.concat
+                                         " "
+                                            [ Bulma.``is-3``
+                                              Bulma.``is-italic``
+                                              Bulma.title ] ] [
+                                    text "channel: "
+                                    span [ attr.``class``
+                                           <| String.concat
+                                               " "
+                                                  [ Bulma.``has-text-weight-light``
+                                                    Bulma.``is-italic`` ] ] [
+                                        text model.channelName
+                                    ]
                                 ]
+                              ]
+                              div[
+                                attr.``class`` <| Bulma.column
+                              ][
+                                a[
+                                  attr.``class`` <| Bulma.``is-pulled-right``
+                                  on.click (fun _ -> dispatch OpenChannelSettings)
+                                ][
+                                  i [
+                                    attr.``class``
+                                      <| String.concat
+                                        " " [
+                                          Mdi.mdi
+                                          Mdi.``mdi-cog``
+                                        ]
+                                  ][]
+                                ]
+                              ]
                             ]
                     | Tag ->
                         h3 [ attr.``class``
@@ -874,8 +948,24 @@ let view authState model dispatch =
                      >> dispatch)
             | _ -> empty
 
+        let channelSettingsModal =
+          match model.showChannelModal with
+            | false -> empty
+            | true ->
+                let tabControl =
+                          ChannelSettingsTabControl.view
+                              model.channelSettingsTabControlModel
+                              (ChannelSettingsTabControlMsg
+                               >> dispatch)
+
+                ComponentsTemplate.ChannelSettingsModal().ChannelName(model.channelName)
+                                  .DismissModal(fun _ ->
+                                  dispatch DismissSettingsModal)
+                                  .ChannelSettingsTabControl(tabControl).Elt()
+
         HomeTemplate().ClubSidebar(clubSidebar).LinkListHole(items)
             .MenuSidebar(homeSidebarHole).AddLinkBoxHole(addLinkBoxHole)
             .LinksTitleSection(title).PreviousButton(previousButton)
             .NextButton(nextButton).SearchBox(searchBox)
+            .ChannelSettingsModal(channelSettingsModal)
             .EmptyLinksHole(emptyLinksHole).Elt()

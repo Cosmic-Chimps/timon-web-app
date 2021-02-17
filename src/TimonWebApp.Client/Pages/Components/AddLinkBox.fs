@@ -10,6 +10,10 @@ open TimonWebApp.Client.Pages.Controls.InputsHtml
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Validation
 open Bolero.Html
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
 
 type UrlForm = { url: string }
 
@@ -92,7 +96,7 @@ let update (timonService: TimonService) (message: Message) (model: Model) =
             | Tag -> model.tagName
             | _ -> String.Empty
 
-        let createLinkPayload =
+        let createLinkPayload  =
             { url = model.urlForm.url
               channelId = channelId
               via = "web"

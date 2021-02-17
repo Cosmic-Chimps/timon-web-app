@@ -1,18 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
     <PropertyGroup>
         <TargetFramework>net5.0</TargetFramework>
-        <RazorLangVersion>3.0</RazorLangVersion>
-        <LangVersion>preview</LangVersion>
         <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Common.fs" />
         <Compile Include="BoleroHelpers.fs" />
         <Compile Include="Validation.fs" />
+        <Compile Include="Services\ServicesJsonProviders.fs" />
+        <Compile Include="Services\AuthServices.fs" />
+        <Compile Include="Services\LinkServices.fs" />
+        <Compile Include="Services\ClubServices.fs" />
+        <Compile Include="Services\ChannelServices.fs" />
         <Compile Include="Services\Services.fs" />
         <Compile Include="Pages\Controls\Controls.fs" />
         <Compile Include="Pages\Controls\ClubSettingsTabControl.fs" />
+        <Compile Include="Pages\Controls\ChannelSettingsTabControl.fs" />
         <Compile Include="Pages\Components\AddLinkBox.fs" />
         <Compile Include="Pages\Components\ChannelMenu.fs" />
         <Compile Include="Pages\Components\ChannelMenuForm.fs" />

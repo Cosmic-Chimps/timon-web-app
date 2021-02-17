@@ -5,6 +5,10 @@ open Bolero.Html
 open TimonWebApp.Client.Common
 open Elmish
 open TimonWebApp.Client.Services
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
 
 type TabItem =
     { code: int
@@ -114,14 +118,14 @@ type Component() =
 
         let tabContent =
             match model.selectedTab with
-            | 0 -> ControlsTemplate.ClubSettingTabContentGeneral().Elt()
-            | 1 -> ControlsTemplate.ClubSettingTabContentApps().Elt()
+            | 0 -> ClubSettingsTabControlsTemplate.ClubSettingTabContentGeneral().Elt()
+            | 1 -> ClubSettingsTabControlsTemplate.ClubSettingTabContentApps().Elt()
             | 2 ->
                 let memberRow (clubMember: ClubMember) =
-                    ControlsTemplate.RowMember()
+                    ClubSettingsTabControlsTemplate.RowMember()
                                     .DisplayName(clubMember.DisplayName).Elt()
 
-                ControlsTemplate.ClubSettingTabContentMembers()
+                ClubSettingsTabControlsTemplate.ClubSettingTabContentMembers()
                                 .Members(forEach model.clubMembers memberRow)
                                 .Elt()
             | _ ->
@@ -129,14 +133,14 @@ type Component() =
                     match model.showWarningLeavingProtectedClub with
                     | false -> empty
                     | true ->
-                        ControlsTemplate.ConfirmLeaveProtectedClub()
+                        ClubSettingsTabControlsTemplate.ConfirmLeaveProtectedClub()
                                         .ClubName(model.clubView.Value.Name)
                                         .DismissConfirmation(fun _ ->
                                         dispatch DismissConfirmation)
                                         .ForceLeave(fun _ -> dispatch ForceLeave)
                                         .Elt()
 
-                ControlsTemplate.ClubSettingTabContentDangerZone()
+                ClubSettingsTabControlsTemplate.ClubSettingTabContentDangerZone()
                                 .LeaveClub(fun _ ->
                                 dispatch (BeforeLeaveClub model.clubView.Value))
                                 .ConfirmLeaveProtectedClub(confirmLeaveProtectedClub)
@@ -144,12 +148,12 @@ type Component() =
 
 
         let renderTabItems tabItem =
-            ControlsTemplate.ClubSettingsTabHeader().TabClass(tabItem.tabClass)
+            ClubSettingsTabControlsTemplate.ClubSettingsTabHeader().TabClass(tabItem.tabClass)
                             .ChangeTab(fun _ ->
                             dispatch (ChangeTab tabItem.code))
                             .IClass(tabItem.iClass).Text(tabItem.text).Elt()
 
-        ControlsTemplate.ClubSettingsTabControl()
+        ClubSettingsTabControlsTemplate.ClubSettingsTabControl()
                         .TabHeaders(forEach model.tabItems renderTabItems)
                         .TabContent(tabContent).Elt()
 

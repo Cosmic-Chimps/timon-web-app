@@ -1,0 +1,48 @@
+<template id="ChannelSettingsTabControl">
+  <div class="tabs is-centered is-boxed">
+    <ul>
+      ${TabHeaders}
+    </ul>
+  </div>
+  ${TabContent}
+  </div>
+</template>
+
+<template id="ChannelSettingsTabHeader">
+  <li class="${TabClass}">
+    <a onclick="${ChangeTab}">
+      <span class="icon is-small"><i class="${IClass}" aria-hidden="true"></i></span>
+      <span>${Text}</span>
+    </a>
+  </li>
+</template>
+
+<template id="ChannelSettingTabContentGeneral">
+  <span>ChannelSettingTabContentGeneral</span>
+</template>
+
+<template id="ChannelSettingTabContentApps">
+  <span>ChannelSettingTabContentApps</span>
+</template>
+
+
+<template id="ChannelSettingTabContentMembers">
+  <div class="content">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Members</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Members}
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<template id="RowMember">
+  <tr>
+    <td>${DisplayName}</td>
+  </tr>
+</template>

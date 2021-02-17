@@ -12,6 +12,7 @@ open TimonWebApp.Client.Validation
 open Bolero.Html
 open Microsoft.JSInterop
 open Blazored.LocalStorage
+open TimonWebApp.Client.ChannelServices
 
 
 type Model =
@@ -81,12 +82,14 @@ let update (jsRuntime: IJSRuntime)
 
     | ChannelsLoaded channels, _ ->
         let msg =
-            ChannelMenu.Message.OnChannelsLoaded channels
+            ChannelMenu.Message.OnChannelsLoaded (model.clubId, channels)
 
         let channelMenuModel, cmd =
-            ChannelMenu.update msg model.channelMenuModel
+            ChannelMenu.update jsRuntime timonService msg model.channelMenuModel
 
-        let cmds = [ cmd; Cmd.none ]
+        let cmds = [
+            Cmd.map ChannelMenuMsg cmd
+            Cmd.none ]
 
         { model with
               channelMenuModel = channelMenuModel },
@@ -114,7 +117,7 @@ let update (jsRuntime: IJSRuntime)
                 (channelId, channel, activeSection)
 
         let channelMenuModel, cmd =
-            ChannelMenu.update msg model.channelMenuModel
+            ChannelMenu.update jsRuntime timonService msg model.channelMenuModel
 
         let recentTagsMenuModel =
             { model.recentTagsMenuModel with
@@ -125,7 +128,7 @@ let update (jsRuntime: IJSRuntime)
                   activeSection = activeSection }
 
         let cmdBatch =
-            [ cmd
+            [ Cmd.map ChannelMenuMsg cmd
               Cmd.ofMsg (LoadLinks(false, channel, channelId, 0)) ]
 
         { model with
@@ -311,10 +314,6 @@ type Component() =
                 | false -> ""
 
             ComponentsTemplate.MenuSidebar()
-                              .LoadAllLinks(fun _ ->
-                              (dispatch
-                                  (LoadLinks(false, String.Empty, Guid.Empty, 0))))
-                              .AllActiveClass(isActiveClass)
                               .ChannelListHole(channels)
                               .ChannelForm(channelForm)
                               .RecentTagListHole(recentTags)

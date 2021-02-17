@@ -11,6 +11,10 @@ open TimonWebApp.Client.Services
 open Bolero.Html
 open TimonWebApp.Client.Validation
 open System
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
 
 type ChannelForm = { name: string }
 

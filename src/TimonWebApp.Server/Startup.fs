@@ -10,7 +10,10 @@ open Microsoft.Extensions.DependencyInjection
 open Bolero.Remoting.Server
 open Bolero.Server.RazorHost
 open Bolero.Templating.Server
-open TimonWebApp.Server.AuthService
+open TimonWebApp.Server.AuthServices
+open TimonWebApp.Server.ChannelServices
+open TimonWebApp.Server.LinkServices
+open TimonWebApp.Server.ClubServices
 open Blazored.LocalStorage
 
 type Startup() =
@@ -18,16 +21,25 @@ type Startup() =
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     member this.ConfigureServices(services: IServiceCollection) =
-        services.AddMvc().AddRazorRuntimeCompilation()
-        |> ignore
+        services
+          .AddMvc()
+          .AddRazorRuntimeCompilation() |> ignore
+
         services.AddServerSideBlazor() |> ignore
+
         services.AddDataProtection() |> ignore
+
         services.AddBlazoredLocalStorage() |> ignore
-        services.AddAuthorization().AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie()
-        |> ignore
-        services.AddRemoting<AuthService>().AddRemoting<LinkService>().AddRemoting<ChannelService>().AddRemoting<ClubService>()
-            .AddBoleroHost()
-        |> ignore
+
+        services
+          .AddAuthorization()
+          .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie() |> ignore
+
+        services.AddRemoting<AuthService>()
+          .AddRemoting<LinkService>()
+          .AddRemoting<ChannelService>()
+          .AddRemoting<ClubService>()
+          .AddBoleroHost() |> ignore
 
 
 #if DEBUG
@@ -44,8 +56,13 @@ type Startup() =
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
-        app.UseAuthentication().UseRemoting().UseStaticFiles().UseRouting().UseBlazorFrameworkFiles()
-           .UseEndpoints(fun endpoints ->
+        app
+          .UseAuthentication()
+          .UseRemoting()
+          .UseStaticFiles()
+          .UseRouting()
+          .UseBlazorFrameworkFiles()
+          .UseEndpoints(fun endpoints ->
 #if DEBUG
            endpoints.UseHotReload()
 #endif

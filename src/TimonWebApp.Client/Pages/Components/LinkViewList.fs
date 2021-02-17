@@ -6,6 +6,12 @@ open TimonWebApp.Client.Services
 open Bolero.Html
 open Microsoft.JSInterop
 open Elmish
+open TimonWebApp.Client.ClubServices
+open TimonWebApp.Client.AuthServices
+open TimonWebApp.Client.LinkServices
+open TimonWebApp.Client.ChannelServices
+open TimonWebApp.Client.JsonProviders
+
 
 type TagForm = { tags: string }
 

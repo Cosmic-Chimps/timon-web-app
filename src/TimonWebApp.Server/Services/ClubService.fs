@@ -23,11 +23,15 @@ open System.Collections.Generic
 open TimonWebApp.Server.HelperService
 open TimonWebApp.Client.ClubServices
 open FSharp.Json
+open TimonWebApp.Client.Dtos
 
-type ClubService(ctx: IRemoteContext,
-                 env: IWebHostEnvironment,
-                 config: IConfiguration,
-                 dataProvider: IDataProtectionProvider) =
+type ClubService
+    (
+        ctx: IRemoteContext,
+        env: IWebHostEnvironment,
+        config: IConfiguration,
+        dataProvider: IDataProtectionProvider
+    ) =
     inherit RemoteHandler<Client.ClubServices.ClubService>()
 
     let endpoint, protector = getCommons config dataProvider
@@ -40,14 +44,18 @@ type ClubService(ctx: IRemoteContext,
                       let! authToken = getToken ctx protector endpoint
 
                       let json =
-                        httpAsync {
-                                 GET(sprintf "%s/clubs/others" endpoint)
-                                 Authorization(sprintf "Bearer %s" authToken)
-                             }
-                             |> Async.RunSynchronously
-                             |> Response.toText
+                          httpAsync {
+                              GET(sprintf "%s/clubs/others" endpoint)
+                              Authorization(sprintf "Bearer %s" authToken)
+                          }
+                          |> Async.RunSynchronously
+                          |> Response.toText
+                          |> fun r ->
+                              match r with
+                              | "" -> "[]"
+                              | _ -> r
 
-                      return json
+                      return Json.deserializeEx<ClubView array> jsonConfig json
                   }
 
           ``get-clubs`` =
@@ -58,13 +66,18 @@ type ClubService(ctx: IRemoteContext,
 
                       let json =
                           httpAsync {
-                                 GET(sprintf "%s/clubs" endpoint)
-                                 Authorization(sprintf "Bearer %s" authToken)
-                             }
-                             |> Async.RunSynchronously
-                             |> Response.toText
+                              GET(sprintf "%s/clubs" endpoint)
+                              Authorization(sprintf "Bearer %s" authToken)
+                          }
+                          |> Async.RunSynchronously
+                          |> Response.toText
+                          |> fun r ->
+                              match r with
+                              | "" -> "[]"
+                              | _ -> r
 
-                      return json
+
+                      return Json.deserializeEx<ClubView array> jsonConfig json
                   }
 
           ``create-club`` =
@@ -73,14 +86,15 @@ type ClubService(ctx: IRemoteContext,
                   async {
                       let! authToken = getToken ctx protector endpoint
 
-                      return httpAsync {
-                                 POST(sprintf "%s/clubs" endpoint)
-                                 Authorization(sprintf "Bearer %s" authToken)
-                                 body
-                                 json (Json.serialize payload)
-                             }
-                             |> Async.RunSynchronously
-                             |> fun x -> x.statusCode
+                      return
+                          httpAsync {
+                              POST(sprintf "%s/clubs" endpoint)
+                              Authorization(sprintf "Bearer %s" authToken)
+                              body
+                              json (Json.serialize payload)
+                          }
+                          |> Async.RunSynchronously
+                          |> fun x -> x.statusCode
                   }
 
           ``subscribe-club`` =
@@ -89,14 +103,15 @@ type ClubService(ctx: IRemoteContext,
                   async {
                       let! authToken = getToken ctx protector endpoint
 
-                      return httpAsync {
-                                 POST(sprintf "%s/clubs/subscribe" endpoint)
-                                 Authorization(sprintf "Bearer %s" authToken)
-                                 body
-                                 json (Json.serialize payload)
-                             }
-                             |> Async.RunSynchronously
-                             |> fun x -> x.statusCode
+                      return
+                          httpAsync {
+                              POST(sprintf "%s/clubs/subscribe" endpoint)
+                              Authorization(sprintf "Bearer %s" authToken)
+                              body
+                              json (Json.serialize payload)
+                          }
+                          |> Async.RunSynchronously
+                          |> fun x -> x.statusCode
                   }
 
           ``unsubscribe-club`` =
@@ -105,14 +120,15 @@ type ClubService(ctx: IRemoteContext,
                   async {
                       let! authToken = getToken ctx protector endpoint
 
-                      return httpAsync {
-                                 POST(sprintf "%s/clubs/unsubscribe" endpoint)
-                                 Authorization(sprintf "Bearer %s" authToken)
-                                 body
-                                 json (Json.serialize payload)
-                             }
-                             |> Async.RunSynchronously
-                             |> fun x -> x.statusCode
+                      return
+                          httpAsync {
+                              POST(sprintf "%s/clubs/unsubscribe" endpoint)
+                              Authorization(sprintf "Bearer %s" authToken)
+                              body
+                              json (Json.serialize payload)
+                          }
+                          |> Async.RunSynchronously
+                          |> fun x -> x.statusCode
                   }
 
           ``get-members`` =
@@ -123,15 +139,19 @@ type ClubService(ctx: IRemoteContext,
 
                       let json =
                           httpAsync {
-                                 GET
-                                     (sprintf
-                                         "%s/clubs/%O/members"
-                                          endpoint
-                                          queryParams.clubId)
-                                 Authorization(sprintf "Bearer %s" authToken)
-                             }
-                             |> Async.RunSynchronously
-                             |> Response.toText
+                              GET(
+                                  sprintf
+                                      "%s/clubs/%O/members"
+                                      endpoint
+                                      queryParams.clubId
+                              )
+
+                              Authorization(sprintf "Bearer %s" authToken)
+                          }
+                          |> Async.RunSynchronously
+                          |> Response.toText
+                          |> Json.deserializeEx<ClubMembersView array>
+                              jsonConfig
 
                       return json
                   } }

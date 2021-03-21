@@ -12,6 +12,8 @@ open TimonWebApp.Client.Pages.Components
 open TimonWebApp.Client.Pages.Components.AnonymousLinkViewList
 open TimonWebApp.Client.Services
 open TimonWebApp.Client.Pages.Controls
+open TimonWebApp.Client.ChannelServices
+open TimonWebApp.Client.Dtos
 
 type Model =
     { addLinkBoxModel: AddLinkBox.Model
@@ -24,6 +26,7 @@ type Model =
       clubId: Guid
       channelName: string
       channelId: Guid
+      channel: ChannelView option
       page: int
       tagName: string
       showNext: bool
@@ -49,8 +52,10 @@ type Model =
           clubName = String.Empty
           clubId = Guid.Empty
           shouldReloadHomeSidebar = true
-          channelSettingsTabControlModel = ChannelSettingsTabControl.Model.Default
-          showChannelModal = false }
+          channelSettingsTabControlModel =
+              ChannelSettingsTabControl.Model.Default
+          showChannelModal = false
+          channel = None }
 
 type Message =
     // | LinksLoaded of GetLinksResult
@@ -86,12 +91,13 @@ let init (_: IJSRuntime) (state: AuthState) =
 
 
 
-let update (jsRuntime: IJSRuntime)
-           (timonService: TimonService)
-           (localStorage: ILocalStorageService)
-           (message: Message)
-           (model: Model)
-           =
+let update
+    (jsRuntime: IJSRuntime)
+    (timonService: TimonService)
+    (localStorage: ILocalStorageService)
+    (message: Message)
+    (model: Model)
+    =
 
     match message, model with
     // | LoadLinks page, _ ->
@@ -141,7 +147,7 @@ let update (jsRuntime: IJSRuntime)
             @ match shouldLoadChannels with
               | true ->
                   [ Cmd.map
-                      HomeSidebarMsg
+                        HomeSidebarMsg
                         (Cmd.ofMsg HomeSidebar.Message.LoadChannels) ]
               | false -> [ Cmd.none ]
 
@@ -263,14 +269,16 @@ let update (jsRuntime: IJSRuntime)
             match model.activeMenuSection with
             | Tag -> Cmd.ofMsg (LoadLinksByTag(model.tagName, model.page))
             | _ ->
-                Cmd.ofMsg
-                    (LoadClubLinks
-                        (false,
-                         model.clubName,
-                         model.clubId,
-                         model.channelName,
-                         model.channelId,
-                         model.page))
+                Cmd.ofMsg (
+                    LoadClubLinks(
+                        false,
+                        model.clubName,
+                        model.clubId,
+                        model.channelName,
+                        model.channelId,
+                        model.page
+                    )
+                )
 
         model, cmd
 
@@ -313,23 +321,32 @@ let update (jsRuntime: IJSRuntime)
         { model with
               homeSidebarModel = homeSidebar
               activeMenuSection = MenuSection.Channel },
-        Cmd.ofMsg
-            (LoadClubLinks
-                (false, model.clubName, model.clubId, channel, channelId, 0))
+        Cmd.ofMsg (
+            LoadClubLinks(
+                false,
+                model.clubName,
+                model.clubId,
+                channel,
+                channelId,
+                0
+            )
+        )
 
     | ClubLinkViewItemMsg (ClubLinkViewList.Message.NotifyTagsUpdated), _ ->
         let cmd =
             match model.activeMenuSection with
             | Tag -> Cmd.ofMsg (LoadLinksByTag(model.tagName, model.page))
             | _ ->
-                Cmd.ofMsg
-                    (LoadClubLinks
-                        (false,
-                         model.clubName,
-                         model.clubId,
-                         model.channelName,
-                         model.channelId,
-                         model.page))
+                Cmd.ofMsg (
+                    LoadClubLinks(
+                        false,
+                        model.clubName,
+                        model.clubId,
+                        model.channelName,
+                        model.channelId,
+                        model.page
+                    )
+                )
 
         model, cmd
 
@@ -354,8 +371,9 @@ let update (jsRuntime: IJSRuntime)
                   clubId = model.clubId }
 
         let loadTagsMessage =
-            HomeSidebar.Message.RecentTagsMenuMsg
-                (RecentTagsMenu.Message.LoadTags(model.clubId))
+            HomeSidebar.Message.RecentTagsMenuMsg(
+                RecentTagsMenu.Message.LoadTags(model.clubId)
+            )
 
         let homeSidebarModel, cmdUpdateRecentTags =
             match model.shouldReloadHomeSidebar with
@@ -374,8 +392,9 @@ let update (jsRuntime: IJSRuntime)
 
 
         let loadTermsMessage =
-            HomeSidebar.Message.RecentSearchMenuMsg
-                (RecentSearchMenu.Message.LoadTerms(model.clubId))
+            HomeSidebar.Message.RecentSearchMenuMsg(
+                RecentSearchMenu.Message.LoadTerms(model.clubId)
+            )
 
         let homeSidebarModel', cmdUpdateRecentTerms =
             match model.shouldReloadHomeSidebar with
@@ -388,7 +407,9 @@ let update (jsRuntime: IJSRuntime)
                     loadTermsMessage
                     model'.homeSidebarModel
 
-        jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
+        jsRuntime
+            .InvokeVoidAsync("scroll", 0, 0)
+            .AsTask()
         |> Async.AwaitTask
         |> ignore
 
@@ -449,8 +470,12 @@ let update (jsRuntime: IJSRuntime)
       _ ->
 
         let msg =
-            HomeSidebar.Message.LoadLinks
-                (shouldLoadChannels, channelName, channelId, page)
+            HomeSidebar.Message.LoadLinks(
+                shouldLoadChannels,
+                channelName,
+                channelId,
+                page
+            )
 
         let homeSidebar, cmd =
             HomeSidebar.update
@@ -530,14 +555,16 @@ let update (jsRuntime: IJSRuntime)
 
     | ClubSidebarMsg (ClubSidebar.Message.ChangeClub (clubView)), _ ->
         let cmd =
-            Cmd.ofMsg
-                (LoadClubLinks
-                    (true,
-                     clubView.Name,
-                     clubView.Id,
-                     String.Empty,
-                     Guid.Empty,
-                     0))
+            Cmd.ofMsg (
+                LoadClubLinks(
+                    true,
+                    clubView.Name,
+                    clubView.Id,
+                    String.Empty,
+                    Guid.Empty,
+                    0
+                )
+            )
 
         let clubMsg = ClubSidebar.Message.ChangeClub(clubView)
 
@@ -620,7 +647,11 @@ let update (jsRuntime: IJSRuntime)
 
     | OpenChannelSettings _, _ ->
         let channelSettingsTabControlMsg =
-            ChannelSettingsTabControl.Message.SetChannel (model.clubId, model.channelId, model.channelName)
+            ChannelSettingsTabControl.Message.SetChannel(
+                model.clubId,
+                model.channelId,
+                model.channelName
+            )
 
         let channelSettingsTabControlModel, cmd =
             ChannelSettingsTabControl.update
@@ -656,7 +687,7 @@ let update (jsRuntime: IJSRuntime)
                 msg
 
         { model with
-            channelSettingsTabControlModel = channelSettingsTabModal },
+              channelSettingsTabControlModel = channelSettingsTabModal },
         Cmd.map ChannelSettingsTabControlMsg cmd
 
 // | AnonymousLinkViewListMsg msg, _ ->
@@ -687,26 +718,31 @@ let previousButton (model: Model) dispatch =
                  (fun _ ->
                      match model.activeMenuSection with
                      | Tag ->
-                         dispatch
-                             (LoadLinksByTag(model.tagName, model.page - 1))
+                         dispatch (
+                             LoadLinksByTag(model.tagName, model.page - 1)
+                         )
                      | Channel ->
-                         dispatch
-                             (LoadClubLinks
-                                 (false,
-                                  model.clubName,
-                                  model.clubId,
-                                  model.channelName,
-                                  model.channelId,
-                                  model.page - 1))
+                         dispatch (
+                             LoadClubLinks(
+                                 false,
+                                 model.clubName,
+                                 model.clubId,
+                                 model.channelName,
+                                 model.channelId,
+                                 model.page - 1
+                             )
+                         )
                      | Search ->
-                         dispatch
-                             (LoadClubLinks
-                                 (false,
-                                  model.clubName,
-                                  model.clubId,
-                                  model.channelName,
-                                  model.channelId,
-                                  model.page - 1))))
+                         dispatch (
+                             LoadClubLinks(
+                                 false,
+                                 model.clubName,
+                                 model.clubId,
+                                 model.channelName,
+                                 model.channelId,
+                                 model.page - 1
+                             )
+                         )))
 
         a [ attr.``class`` Bulma.``pagination-previous``
             attr.disabled isDisabled
@@ -727,26 +763,31 @@ let nextButton (model: Model) dispatch =
                  (fun _ ->
                      match model.activeMenuSection with
                      | Tag ->
-                         dispatch
-                             (LoadLinksByTag(model.tagName, model.page + 1))
+                         dispatch (
+                             LoadLinksByTag(model.tagName, model.page + 1)
+                         )
                      | Channel ->
-                         dispatch
-                             (LoadClubLinks
-                                 (false,
-                                  model.clubName,
-                                  model.clubId,
-                                  model.channelName,
-                                  model.channelId,
-                                  model.page + 1))
+                         dispatch (
+                             LoadClubLinks(
+                                 false,
+                                 model.clubName,
+                                 model.clubId,
+                                 model.channelName,
+                                 model.channelId,
+                                 model.page + 1
+                             )
+                         )
                      | Search ->
-                         dispatch
-                             (LoadClubLinks
-                                 (false,
-                                  model.clubName,
-                                  model.clubId,
-                                  model.channelName,
-                                  model.channelId,
-                                  model.page + 1))))
+                         dispatch (
+                             LoadClubLinks(
+                                 false,
+                                 model.clubName,
+                                 model.clubId,
+                                 model.channelName,
+                                 model.channelId,
+                                 model.page + 1
+                             )
+                         )))
 
         a [ attr.``class`` Bulma.``pagination-next``
             attr.disabled isDisabled
@@ -776,16 +817,24 @@ let view authState model dispatch =
        && authState = AuthState.Success
        && hasClubs then
         printfn "one"
-        ComponentsTemplate.LoadingTemplate().Elt()
+
+        ComponentsTemplate
+            .LoadingTemplate()
+            .Elt()
     else if not (model.anonymouslinkViewListModel.isReady)
             && authState
-            <> AuthState.Success then
+               <> AuthState.Success then
         printfn "two"
-        ComponentsTemplate.LoadingTemplate().Elt()
+
+        ComponentsTemplate
+            .LoadingTemplate()
+            .Elt()
     else if not (model.anonymouslinkViewListModel.isReady)
             && authState = AuthState.Success
             && not hasClubs then
-        ComponentsTemplate.LoadingTemplate().Elt()
+        ComponentsTemplate
+            .LoadingTemplate()
+            .Elt()
     else
         let items =
             match authState with
@@ -837,59 +886,53 @@ let view authState model dispatch =
                         <| function
                         | true -> empty
                         | false ->
-                            div [
-                              attr.``class`` <| Bulma.columns
-                            ][
-                              div[
-                                attr.``class`` <| Bulma.column
-                              ][
-                                h3 [ attr.``class``
-                                     <| String.concat
-                                         " "
-                                            [ Bulma.``is-3``
-                                              Bulma.``is-italic``
-                                              Bulma.title ] ] [
-                                    text "channel: "
-                                    span [ attr.``class``
-                                           <| String.concat
-                                               " "
-                                                  [ Bulma.``has-text-weight-light``
-                                                    Bulma.``is-italic`` ] ] [
-                                        text model.channelName
+                            div [ attr.``class``
+                                  <| Bulma.columns ] [
+                                div [ attr.``class``
+                                      <| Bulma.column ] [
+                                    h3 [ attr.``class``
+                                         <| String.concat
+                                             " "
+                                             [ Bulma.``is-3``
+                                               Bulma.``is-italic``
+                                               Bulma.title ] ] [
+                                        text "channel: "
+                                        span [ attr.``class``
+                                               <| String.concat
+                                                   " "
+                                                   [ Bulma.``has-text-weight-light``
+                                                     Bulma.``is-italic`` ] ] [
+                                            text model.channelName
+                                        ]
                                     ]
                                 ]
-                              ]
-                              div[
-                                attr.``class`` <| Bulma.column
-                              ][
-                                a[
-                                  attr.``class`` <| Bulma.``is-pulled-right``
-                                  on.click (fun _ -> dispatch OpenChannelSettings)
-                                ][
-                                  i [
-                                    attr.``class``
-                                      <| String.concat
-                                        " " [
-                                          Mdi.mdi
-                                          Mdi.``mdi-cog``
-                                        ]
-                                  ][]
+                                div [ attr.``class``
+                                      <| Bulma.column ] [
+                                    a [ attr.``class``
+                                        <| Bulma.``is-pulled-right``
+                                        on.click
+                                            (fun _ ->
+                                                dispatch OpenChannelSettings) ] [
+                                        i [ attr.``class``
+                                            <| String.concat
+                                                " "
+                                                [ Mdi.mdi; Mdi.``mdi-cog`` ] ] []
+                                    ]
                                 ]
-                              ]
                             ]
                     | Tag ->
                         h3 [ attr.``class``
                              <| String.concat
                                  " "
-                                    [ Bulma.``is-3``
-                                      Bulma.``is-italic``
-                                      Bulma.title ] ] [
+                                 [ Bulma.``is-3``
+                                   Bulma.``is-italic``
+                                   Bulma.title ] ] [
                             text "tag: "
                             span [ attr.``class``
                                    <| String.concat
                                        " "
-                                          [ Bulma.``has-text-weight-light``
-                                            Bulma.``is-italic`` ] ] [
+                                       [ Bulma.``has-text-weight-light``
+                                         Bulma.``is-italic`` ] ] [
                                 text model.tagName
                             ]
                         ]
@@ -897,15 +940,15 @@ let view authState model dispatch =
                         h3 [ attr.``class``
                              <| String.concat
                                  " "
-                                    [ Bulma.``is-3``
-                                      Bulma.``is-italic``
-                                      Bulma.title ] ] [
+                                 [ Bulma.``is-3``
+                                   Bulma.``is-italic``
+                                   Bulma.title ] ] [
                             text "search: "
                             span [ attr.``class``
                                    <| String.concat
                                        " "
-                                          [ Bulma.``has-text-weight-light``
-                                            Bulma.``is-italic`` ] ] [
+                                       [ Bulma.``has-text-weight-light``
+                                         Bulma.``is-italic`` ] ] [
                                 text model.term
                             ]
                         ]
@@ -928,16 +971,21 @@ let view authState model dispatch =
                 | true -> empty
                 | false ->
                     let message =
-                        ClubSidebarMsg
-                            (ClubSidebar.Message.ToggleSidebarVisibility)
+                        ClubSidebarMsg(
+                            ClubSidebar.Message.ToggleSidebarVisibility
+                        )
 
                     // Model.Default, Cmd.map AnonymousLinkViewListMsg cmd
 
-                    ComponentsTemplate.SubscribeToClubBanner()
-                                      .ShowClubSidebar(fun _ -> dispatch message)
-                                      .Elt()
+                    ComponentsTemplate
+                        .SubscribeToClubBanner()
+                        .ShowClubSidebar(fun _ -> dispatch message)
+                        .Elt()
 
-            | _ -> ComponentsTemplate.EmptyListBanner().Elt()
+            | _ ->
+                ComponentsTemplate
+                    .EmptyListBanner()
+                    .Elt()
 
         let clubSidebar =
             match authState with
@@ -949,23 +997,31 @@ let view authState model dispatch =
             | _ -> empty
 
         let channelSettingsModal =
-          match model.showChannelModal with
+            match model.showChannelModal with
             | false -> empty
             | true ->
                 let tabControl =
-                          ChannelSettingsTabControl.view
-                              model.channelSettingsTabControlModel
-                              (ChannelSettingsTabControlMsg
-                               >> dispatch)
+                    ChannelSettingsTabControl.view
+                        model.channelSettingsTabControlModel
+                        (ChannelSettingsTabControlMsg
+                         >> dispatch)
 
-                ComponentsTemplate.ChannelSettingsModal().ChannelName(model.channelName)
-                                  .DismissModal(fun _ ->
-                                  dispatch DismissSettingsModal)
-                                  .ChannelSettingsTabControl(tabControl).Elt()
+                ComponentsTemplate
+                    .ChannelSettingsModal()
+                    .ChannelName(model.channelName)
+                    .DismissModal(fun _ -> dispatch DismissSettingsModal)
+                    .ChannelSettingsTabControl(tabControl)
+                    .Elt()
 
-        HomeTemplate().ClubSidebar(clubSidebar).LinkListHole(items)
-            .MenuSidebar(homeSidebarHole).AddLinkBoxHole(addLinkBoxHole)
-            .LinksTitleSection(title).PreviousButton(previousButton)
-            .NextButton(nextButton).SearchBox(searchBox)
+        HomeTemplate()
+            .ClubSidebar(clubSidebar)
+            .LinkListHole(items)
+            .MenuSidebar(homeSidebarHole)
+            .AddLinkBoxHole(addLinkBoxHole)
+            .LinksTitleSection(title)
+            .PreviousButton(previousButton)
+            .NextButton(nextButton)
+            .SearchBox(searchBox)
             .ChannelSettingsModal(channelSettingsModal)
-            .EmptyLinksHole(emptyLinksHole).Elt()
+            .EmptyLinksHole(emptyLinksHole)
+            .Elt()

@@ -8,31 +8,34 @@ open TimonWebApp.Client.Common
 let errorAndClass name onFocus (result: Result<_, Map<_, _>> option) =
     match result, onFocus with
     | _, Some focus when focus = name -> None, ""
-    | Some (Error e), _ when (e.ContainsKey name
-                              && e.[name]
-                              <> []) ->
+    | Some (Error e), _ when
+        (e.ContainsKey name
+         && e.[name] <> []) ->
         Some(System.String.Join(",", e.[name])), Bulma.``is-danger``
     | Some _, _ -> None, "modified valid"
     | _ -> None, ""
 
-let formFieldItem validatedForm
-                  onFocus
-                  (isDisabled: bool)
-                  fieldType
-                  name
-                  value
-                  callback
-                  =
-    let error, validClass = errorAndClass name onFocus validatedForm
+let formFieldItem
+    validatedForm
+    onFocus
+    (isDisabled: bool)
+    fieldType
+    name
+    value
+    callback
+    =
+    let error, validClass =
+        errorAndClass name onFocus validatedForm
+
     div [ attr.``class`` "field" ] [
         div [ attr.``class`` "control" ] [
             input [
                 attr.``class``
                 <| String.concat
                     " "
-                       [ Bulma.input
-                         Bulma.``is-large``
-                         validClass ]
+                    [ Bulma.input
+                      Bulma.``is-large``
+                      validClass ]
                 attr.``type`` fieldType
                 attr.placeholder name
                 attr.autofocus ""
@@ -49,15 +52,17 @@ let formFieldItem validatedForm
         ]
     ]
 
-let inputAddLink item
-                 onFocus
-                 inputName
-                 inputValue
-                 inputCallback
-                 buttonAction
-                 buttonName
-                 =
+let inputAddLink
+    item
+    onFocus
+    inputName
+    inputValue
+    inputCallback
+    buttonAction
+    buttonName
+    =
     let error, validClass = errorAndClass inputName onFocus item
+
     concat [
         //        comp<KeySubscriber> [] []
         div [ attr.``class``
@@ -67,42 +72,43 @@ let inputAddLink item
                 div [ attr.``class``
                       <| String.concat
                           " "
-                             [ Bulma.control; Bulma.``is-expanded`` ] ] [
+                          [ Bulma.control; Bulma.``is-expanded`` ] ] [
                     p [ attr.``class``
                         <| String.concat
                             " "
-                               [ Bulma.control
-                                 Bulma.``has-icons-left``
-                                 Bulma.``has-icons-right`` ] ] [
+                            [ Bulma.control
+                              Bulma.``has-icons-left``
+                              Bulma.``has-icons-right`` ] ] [
                         input [
                             attr.``class``
                             <| String.concat " " [ Bulma.input; validClass ]
                             attr.``type`` "text"
                             attr.placeholder "Add new link"
                             bind.input.string inputValue inputCallback
-                            on.keyup (fun e ->
-                                match e.Key with
-                                | "Enter" -> buttonAction (null)
-                                | "Escape" -> ()
-                                | _ -> ())
+                            on.keyup
+                                (fun e ->
+                                    match e.Key with
+                                    | "Enter" -> buttonAction (null)
+                                    | "Escape" -> ()
+                                    | _ -> ())
                         ]
                         span [ attr.``class``
                                <| String.concat
                                    " "
-                                      [ Bulma.icon
-                                        Bulma.``is-small``
-                                        Bulma.``is-left`` ] ] [
+                                   [ Bulma.icon
+                                     Bulma.``is-small``
+                                     Bulma.``is-left`` ] ] [
                             i [ attr.``class``
                                 <| String.concat
                                     " "
-                                       [ Mdi.mdi; Mdi.``mdi-link`` ] ] []
+                                    [ Mdi.mdi; Mdi.``mdi-link`` ] ] []
                         ]
                         match error with
                         | Some value ->
                             span [ attr.``class``
                                    <| String.concat
                                        " "
-                                          [ Bulma.``has-text-danger`` ] ] [
+                                       [ Bulma.``has-text-danger`` ] ] [
                                 text value
                             ]
                         | None -> ()
@@ -112,10 +118,10 @@ let inputAddLink item
                     button [ attr.``class``
                              <| String.concat
                                  " "
-                                    [ Bulma.button
-                                      Bulma.``is-block``
-                                      Bulma.``is-info``
-                                      Bulma.``is-fullwidth`` ]
+                                 [ Bulma.button
+                                   Bulma.``is-block``
+                                   Bulma.``is-info``
+                                   Bulma.``is-fullwidth`` ]
                              on.click buttonAction ] [
                         text buttonName
                     ]
@@ -124,17 +130,20 @@ let inputAddLink item
         ]
     ]
 
-let inputAdd inputId
-             placeholder
-             leftIcon
-             item
-             onFocus
-             inputName
-             inputValue
-             inputCallback
-             buttonAction
-             =
+let inputWithButton
+    inputId
+    placeholder
+    leftIcon
+    item
+    onFocus
+    inputName
+    inputValue
+    inputCallback
+    buttonAction
+    buttonText
+    =
     let error, validClass = errorAndClass inputName onFocus item
+
     concat [
         //        comp<KeySubscriber> [] []
         div [ attr.``class``
@@ -144,9 +153,9 @@ let inputAdd inputId
                 p [ attr.``class``
                     <| String.concat
                         " "
-                           [ Bulma.control
-                             Bulma.``has-icons-left``
-                             Bulma.``has-icons-right`` ] ] [
+                        [ Bulma.control
+                          Bulma.``has-icons-left``
+                          Bulma.``has-icons-right`` ] ] [
                     input [
                         attr.id inputId
                         attr.``class``
@@ -154,18 +163,19 @@ let inputAdd inputId
                         attr.``type`` "text"
                         attr.placeholder placeholder
                         bind.input.string inputValue inputCallback
-                        on.keyup (fun e ->
-                            match e.Key with
-                            | "Enter" -> buttonAction (null)
-                            | "Escape" -> ()
-                            | _ -> ())
+                        on.keyup
+                            (fun e ->
+                                match e.Key with
+                                | "Enter" -> buttonAction (null)
+                                | "Escape" -> ()
+                                | _ -> ())
                     ]
                     span [ attr.``class``
                            <| String.concat
                                " "
-                                  [ Bulma.icon
-                                    Bulma.``is-small``
-                                    Bulma.``is-left`` ] ] [
+                               [ Bulma.icon
+                                 Bulma.``is-small``
+                                 Bulma.``is-left`` ] ] [
                         i [ attr.``class``
                             <| String.concat " " [ Mdi.mdi; leftIcon ] ] []
                     ]
@@ -175,7 +185,7 @@ let inputAdd inputId
                         span [ attr.``class``
                                <| String.concat
                                    " "
-                                      [ Bulma.``has-text-danger`` ] ] [
+                                   [ Bulma.``has-text-danger`` ] ] [
                             text value
                         ]
                     | None -> ()
@@ -185,12 +195,12 @@ let inputAdd inputId
                 button [ attr.``class``
                          <| String.concat
                              " "
-                                [ Bulma.button
-                                  Bulma.``is-block``
-                                  Bulma.``is-info``
-                                  Bulma.``is-fullwidth`` ]
+                             [ Bulma.button
+                               Bulma.``is-block``
+                               Bulma.``is-info``
+                               Bulma.``is-fullwidth`` ]
                          on.click buttonAction ] [
-                    text "Add"
+                    text buttonText
                 ]
             ]
         ]
@@ -201,27 +211,28 @@ let inputSearch inputValue inputCallback buttonAction =
         div [ attr.``class``
               <| String.concat
                   " "
-                     [ Bulma.control
-                       Bulma.``has-icons-left``
-                       Bulma.``has-icons-right`` ] ] [
+                  [ Bulma.control
+                    Bulma.``has-icons-left``
+                    Bulma.``has-icons-right`` ] ] [
             input [
                 attr.``class``
                 <| String.concat " " [ Bulma.input ]
                 attr.``type`` "text"
                 attr.placeholder "Search"
                 bind.input.string inputValue inputCallback
-                on.keyup (fun e ->
-                    match e.Key with
-                    | "Enter" -> buttonAction (null)
-                    | "Escape" -> ()
-                    | _ -> ())
+                on.keyup
+                    (fun e ->
+                        match e.Key with
+                        | "Enter" -> buttonAction (null)
+                        | "Escape" -> ()
+                        | _ -> ())
             ]
             span [ attr.``class``
                    <| String.concat
                        " "
-                          [ Bulma.icon
-                            Bulma.``is-small``
-                            Bulma.``is-left`` ] ] [
+                       [ Bulma.icon
+                         Bulma.``is-small``
+                         Bulma.``is-left`` ] ] [
                 i [ attr.``class``
                     <| String.concat " " [ Mdi.mdi; Mdi.``mdi-magnify`` ] ] []
             ]
@@ -229,14 +240,14 @@ let inputSearch inputValue inputCallback buttonAction =
             span [ attr.``class``
                    <| String.concat
                        " "
-                          [ Bulma.icon
-                            Bulma.``is-small``
-                            Bulma.``is-right`` ] ] [
+                       [ Bulma.icon
+                         Bulma.``is-small``
+                         Bulma.``is-right`` ] ] [
                 i [ attr.``class``
                     <| String.concat
                         " "
-                           [ Mdi.mdi
-                             Mdi.``mdi-head-flash-outline`` ] ] []
+                        [ Mdi.mdi
+                          Mdi.``mdi-head-flash-outline`` ] ] []
             ]
         ]
     ]

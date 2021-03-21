@@ -13,6 +13,7 @@ open Bolero.Html
 open Microsoft.JSInterop
 open Blazored.LocalStorage
 open TimonWebApp.Client.ChannelServices
+open TimonWebApp.Client.Dtos
 
 
 type Model =
@@ -56,12 +57,13 @@ let isReady model =
     && model.recentTagsMenuModel.isReady
     && model.recentSearchMenuModel.isReady
 
-let update (jsRuntime: IJSRuntime)
-           (timonService: TimonService)
-           (localStorage: ILocalStorageService)
-           (message: Message)
-           (model: Model)
-           =
+let update
+    (jsRuntime: IJSRuntime)
+    (timonService: TimonService)
+    (localStorage: ILocalStorageService)
+    (message: Message)
+    (model: Model)
+    =
 
     match message, model with
     | LoadChannels, _ ->
@@ -82,14 +84,12 @@ let update (jsRuntime: IJSRuntime)
 
     | ChannelsLoaded channels, _ ->
         let msg =
-            ChannelMenu.Message.OnChannelsLoaded (model.clubId, channels)
+            ChannelMenu.Message.OnChannelsLoaded(model.clubId, channels)
 
         let channelMenuModel, cmd =
             ChannelMenu.update jsRuntime timonService msg model.channelMenuModel
 
-        let cmds = [
-            Cmd.map ChannelMenuMsg cmd
-            Cmd.none ]
+        let cmds = [ Cmd.map ChannelMenuMsg cmd; Cmd.none ]
 
         { model with
               channelMenuModel = channelMenuModel },
@@ -113,8 +113,11 @@ let update (jsRuntime: IJSRuntime)
                                                             activeSection)),
       _ ->
         let msg =
-            ChannelMenu.Message.LoadChannelLinks
-                (channelId, channel, activeSection)
+            ChannelMenu.Message.LoadChannelLinks(
+                channelId,
+                channel,
+                activeSection
+            )
 
         let channelMenuModel, cmd =
             ChannelMenu.update jsRuntime timonService msg model.channelMenuModel
@@ -313,11 +316,13 @@ type Component() =
                 | true -> Bulma.``is-active``
                 | false -> ""
 
-            ComponentsTemplate.MenuSidebar()
-                              .ChannelListHole(channels)
-                              .ChannelForm(channelForm)
-                              .RecentTagListHole(recentTags)
-                              .RecentSearchListHole(recentSearchMenu).Elt()
+            ComponentsTemplate
+                .MenuSidebar()
+                .ChannelListHole(channels)
+                .ChannelForm(channelForm)
+                .RecentTagListHole(recentTags)
+                .RecentSearchListHole(recentSearchMenu)
+                .Elt()
         | _ -> empty
 
 

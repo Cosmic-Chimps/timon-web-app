@@ -10,23 +10,23 @@ open TimonWebApp.Client.ClubServices
 open TimonWebApp.Client.AuthServices
 open TimonWebApp.Client.LinkServices
 open TimonWebApp.Client.ChannelServices
-open TimonWebApp.Client.JsonProviders
+open TimonWebApp.Client.Dtos
 
 
 type TagForm = { tags: string }
 
-type LinkView = { view: GetLinksResultProvider.Link }
+type LocalLinkView = { view: LinkView }
 
 type Model =
-    { links: LinkView array
+    { links: LocalLinkView array
       isReady: bool }
     static member Default = { links = Array.empty; isReady = false }
 
 type Message =
-    | LinksLoaded of GetLinksResult
+    | LinksLoaded of AnonymousLinkView
     | LoadLinks of int
 
-let mapDataLinksToView (dataLinks: GetLinksResult) =
+let mapDataLinksToView (dataLinks: AnonymousLinkView) =
     dataLinks.Links
     |> Seq.map (fun lv -> { view = lv })
     |> Seq.toArray
@@ -36,7 +36,9 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) message model =
     | LinksLoaded data, _ ->
         let linkViewFormList = mapDataLinksToView data
 
-        jsRuntime.InvokeVoidAsync("scroll", 0, 0).AsTask()
+        jsRuntime
+            .InvokeVoidAsync("scroll", 0, 0)
+            .AsTask()
         |> Async.AwaitTask
         |> ignore
 
@@ -46,7 +48,7 @@ let update (jsRuntime: IJSRuntime) (timonService: TimonService) message model =
         Cmd.none
 
     | LoadLinks (page), _ ->
-        let queryParams: GetLinkParams = { page = page }
+        let queryParams : GetLinkParams = { page = page }
 
         let linksCmd =
             Cmd.OfAsync.either
@@ -61,21 +63,30 @@ type Component() =
     inherit ElmishComponent<Model, Message>()
 
     override _.View model dispatch =
-        forEach model.links (fun l ->
-            let linkTags =
-                match l.view.Tags with
-                | "" -> empty
-                | _ ->
-                    forEach (l.view.Tags.Split(",")) (fun tag ->
-                        span [ attr.``class``
-                               <| String.concat
-                                   " "
-                                      [ Bulma.tag; Bulma.``is-info`` ] ] [
-                            text (tag.Trim())
-                        ])
+        forEach
+            model.links
+            (fun l ->
+                let linkTags =
+                    match l.view.Tags with
+                    | "" -> empty
+                    | _ ->
+                        forEach
+                            (l.view.Tags.Split(","))
+                            (fun tag ->
+                                span [ attr.``class``
+                                       <| String.concat
+                                           " "
+                                           [ Bulma.tag; Bulma.``is-info`` ] ] [
+                                    text (tag.Trim())
+                                ])
 
-            ComponentsTemplate.LinkItem().Url(l.view.Url).Title(l.view.Title)
-                              .LinkTags(linkTags)
-                              .ShortDescription(l.view.ShortDescription).Elt())
+                ComponentsTemplate
+                    .LinkItem()
+                    .Url(l.view.Url)
+                    .Title(l.view.Title)
+                    .LinkTags(linkTags)
+                    .ShortDescription(l.view.ShortDescription)
+                    .Elt())
 
-let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch
+let view (model: Model) dispatch =
+    ecomp<Component, _, _> [] model dispatch

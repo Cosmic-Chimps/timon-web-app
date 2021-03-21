@@ -14,7 +14,7 @@ open TimonWebApp.Client.ClubServices
 open TimonWebApp.Client.AuthServices
 open TimonWebApp.Client.LinkServices
 open TimonWebApp.Client.ChannelServices
-open TimonWebApp.Client.JsonProviders
+open TimonWebApp.Client.Dtos
 
 type Model =
     { failureReason: string option
@@ -45,19 +45,22 @@ let init _ = Model.Default, Cmd.none
 let validateForm (form: LoginRequest) =
     let cannotBeBlank (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
         |> validator.End
 
     let validEmail (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
-        |> validator.IsMail
-            (name
-             + " should be an email format")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
+        |> validator.IsMail(
+            name
+            + " should be an email format"
+        )
         |> validator.End
 
     all
@@ -68,6 +71,7 @@ let validateForm (form: LoginRequest) =
 let update (timonService: TimonService) message model =
     let validateForced form =
         let validated = validateForm form
+
         { model with
               currentLogin = form
               validatedLogin = Some validated
@@ -144,25 +148,25 @@ let view (jsRuntime: IJSRuntime) model dispatch =
     div [ attr.``class``
           <| String.concat
               " "
-                 [ Bulma.hero
-                   Bulma.``is-fullheight``
-                   Bulma.``is-light`` ] ] [
+              [ Bulma.hero
+                Bulma.``is-fullheight``
+                Bulma.``is-light`` ] ] [
         div [ attr.``class`` Bulma.``hero-body`` ] [
             div [ attr.``class``
                   <| String.concat
                       " "
-                         [ Bulma.container
-                           Bulma.``has-text-centered`` ] ] [
+                      [ Bulma.container
+                        Bulma.``has-text-centered`` ] ] [
                 div [ attr.``class``
                       <| String.concat
                           " "
-                             [ Bulma.column
-                               Bulma.``is-8``
-                               Bulma.``is-offset-2`` ] ] [
+                          [ Bulma.column
+                            Bulma.``is-8``
+                            Bulma.``is-offset-2`` ] ] [
                     h1 [ attr.``class``
                          <| String.concat
                              " "
-                                [ Bulma.title; Bulma.``has-text-grey`` ] ] [
+                             [ Bulma.title; Bulma.``has-text-grey`` ] ] [
                         text "Log in"
                     ]
                     hr [ attr.``class`` "login-hr" ]
@@ -173,9 +177,9 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                         div [ attr.``class``
                               <| String.concat
                                   " "
-                                     [ Bulma.title
-                                       Bulma.``has-text-grey``
-                                       Bulma.``is-5`` ] ] [
+                                  [ Bulma.title
+                                    Bulma.``has-text-grey``
+                                    Bulma.``is-5`` ] ] [
                             text "Please enter your email and password"
                         ]
                         match model.failureReason with
@@ -183,7 +187,7 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                             div [ attr.``class``
                                   <| String.concat
                                       " "
-                                         [ Bulma.``is-danger``; Bulma.message ] ] [
+                                      [ Bulma.``is-danger``; Bulma.message ] ] [
                                 div [ attr.``class`` Bulma.``message-header`` ] [
                                     text value
                                 ]
@@ -216,15 +220,15 @@ let view (jsRuntime: IJSRuntime) model dispatch =
                                          attr.``class``
                                          <| String.concat
                                              " "
-                                                [ Bulma.button
-                                                  Bulma.``is-block``
-                                                  Bulma.``is-primary``
-                                                  Bulma.``is-large``
-                                                  Bulma.``is-fullwidth``
-                                                  if model.isLoading then
-                                                      Bulma.``is-loading``
-                                                  else
-                                                      "" ]
+                                             [ Bulma.button
+                                               Bulma.``is-block``
+                                               Bulma.``is-primary``
+                                               Bulma.``is-large``
+                                               Bulma.``is-fullwidth``
+                                               if model.isLoading then
+                                                   Bulma.``is-loading``
+                                               else
+                                                   "" ]
                                          attr.disabled model.isLoading
                                          on.click (fun _ -> dispatch DoLogin) ] [
                                     text "Log in"

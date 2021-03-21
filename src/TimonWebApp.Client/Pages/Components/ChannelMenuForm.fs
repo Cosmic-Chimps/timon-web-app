@@ -40,22 +40,25 @@ type Message =
 let validateChannelForm (channelForm) =
     let validateName (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
         |> validator.End
 
     all
     <| fun t -> { name = validateName t "Name" channelForm.name }
 
 
-let update (jsRuntime: IJSRuntime)
-           (timonService: TimonService)
-           (message: Message)
-           (model: Model)
-           =
+let update
+    (jsRuntime: IJSRuntime)
+    (timonService: TimonService)
+    (message: Message)
+    (model: Model)
+    =
     let validateChannelForced form =
         let mapResults = validateChannelForm form
+
         { model with
               channelForm = form
               errorsValidateChannelForm = Some mapResults }
@@ -77,6 +80,7 @@ let update (jsRuntime: IJSRuntime)
         Cmd.ofMsg (AddChannel)
     | ChannelAdded _, _ ->
         let channelForm = { model.channelForm with name = "" }
+
         { model with
               isAddingChannel = false
               channelForm = channelForm },
@@ -92,7 +96,7 @@ let update (jsRuntime: IJSRuntime)
     | _, ({ errorsValidateChannelForm = Some (Error _) }) -> model, Cmd.none
 
     | AddChannel, _ ->
-        let payload: CreateChannelPayload =
+        let payload : CreateChannelPayload =
             { clubId = model.clubId
               name = model.channelForm.name }
 
@@ -111,7 +115,7 @@ type Component() =
 
     override _.View model dispatch =
         let formFieldItem =
-            inputAdd
+            inputWithButton
                 "channel_new_input"
                 "Add new channel"
                 Mdi.``mdi-pound``
@@ -128,9 +132,10 @@ type Component() =
             | true ->
                 (formFieldItem
                     "Name"
-                     model.channelForm.name
-                     inputCallback
-                     buttonAction,
+                    model.channelForm.name
+                    inputCallback
+                    buttonAction
+                    "Add",
                  Mdi.``mdi-minus-circle-outline``)
             | false -> (empty, Mdi.``mdi-plus-circle-outline``)
 
@@ -141,7 +146,11 @@ type Component() =
                     <| String.concat " " [ "mdi"; icon ] ] []
             ]
 
-        ComponentsTemplate.AddChannelForm().Icon(icon).ChannelInput(inputBox)
-                          .Elt()
+        ComponentsTemplate
+            .AddChannelForm()
+            .Icon(icon)
+            .ChannelInput(inputBox)
+            .Elt()
 
-let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch
+let view (model: Model) dispatch =
+    ecomp<Component, _, _> [] model dispatch

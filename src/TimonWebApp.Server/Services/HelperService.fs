@@ -25,18 +25,25 @@ type TokenProvider = JsonProvider<Constants.tokenResponseJson>
 
 type RefreshTokenRequest = { refreshToken: string }
 
-let getCommons (config: IConfiguration) (dataProvider: IDataProtectionProvider) =
+let jsonConfig =
+    JsonConfig.create (jsonFieldNaming = Json.lowerCamelCase)
+
+let getCommons
+    (config: IConfiguration)
+    (dataProvider: IDataProtectionProvider)
+    =
     let protector =
         dataProvider.CreateProtector(Constants.providerKey)
 
     let endpoint = config.["TimonEndPoint"]
     (endpoint, protector)
 
-let singInUser (ctx: IRemoteContext)
-               (protector: IDataProtector)
-               email
-               (res: TokenProvider.Root)
-               =
+let singInUser
+    (ctx: IRemoteContext)
+    (protector: IDataProtector)
+    email
+    (res: TokenProvider.Root)
+    =
     async {
         let refreshTokenProtected = protector.Protect(res.RefreshToken)
 
@@ -48,8 +55,12 @@ let singInUser (ctx: IRemoteContext)
               Claim("TimonRefreshToken", refreshTokenProtected)
               Claim("TimonExpiredDate", expiresAt.ToString()) ]
 
-        do! ctx.HttpContext.AsyncSignIn
-                (email, claims = claims, persistFor = TimeSpan.FromDays(365.))
+        do!
+            ctx.HttpContext.AsyncSignIn(
+                email,
+                claims = claims,
+                persistFor = TimeSpan.FromDays(365.)
+            )
 
         return res.AccessToken
     }
@@ -71,8 +82,12 @@ let getDisplayNameFromToken token =
         JsonSerializer.Deserialize<Dictionary<string, Object>>(payload)
 
     match map.ContainsKey("timonUserDisplayName") with
-    | true -> map.["timonUserDisplayName"].ToString()
-    | false -> map.["email"].ToString()
+    | true ->
+        map.["timonUserDisplayName"]
+            .ToString()
+    | false ->
+        map.["email"]
+            .ToString()
 
 
 let getDisplayNameFromAccessToken (ctx: IRemoteContext) =
@@ -98,14 +113,12 @@ let getToken (ctx: IRemoteContext) (protector: IDataProtector) endpoint =
             |> Seq.find (fun c -> c.Type = "TimonToken")
             |> fun c -> c.Value
 
-        return! match expireAt < DateTime.UtcNow with
-                | true ->
-                    renewToken endpoint { refreshToken = timonRefreshToken }
-                    |> singInUser
-                        ctx
-                           protector
-                           ctx.HttpContext.User.Identity.Name
-                | false -> async { return timonToken }
+        return!
+            match expireAt < DateTime.UtcNow with
+            | true ->
+                renewToken endpoint { refreshToken = timonRefreshToken }
+                |> singInUser ctx protector ctx.HttpContext.User.Identity.Name
+            | false -> async { return timonToken }
     }
 
 let hasResponseValidStatus response =

@@ -10,7 +10,8 @@ open ChannelServices
 open AuthServices
 open LinkServices
 open ClubServices
-open TimonWebApp.Client.JsonProviders
+open TimonWebApp.Client.Dtos
+
 type TimonService =
     { linkService: LinkService
       authService: AuthService
@@ -19,16 +20,10 @@ type TimonService =
 
 //#region LinkService
 let getLinks (timonService, queryParams) =
-    async {
-        let! resp = timonService.linkService.``get-links`` queryParams
-        return GetLinksResultProvider.Parse resp
-    }
+    async { return! timonService.linkService.``get-links`` queryParams }
 
 let getClubLinks (timonService, queryParams) =
-    async {
-        let! resp = timonService.linkService.``get-club-links`` queryParams
-        return GetClubLinksResultProvider.Parse resp
-    }
+    async { return! timonService.linkService.``get-club-links`` queryParams }
 
 let createLink (timonService, payload) =
     async { return! timonService.linkService.``create-link`` payload }
@@ -40,16 +35,11 @@ let addTags (timonService, payload) =
     }
 
 let getLinksByTag (timonService, queryParams) =
-    async {
-        let! resp = timonService.linkService.``get-links-by-tag`` queryParams
-        return GetLinksResultProvider.Parse resp
-    }
+    async { return! timonService.linkService.``get-links-by-tag`` queryParams }
 
 let getClubLinksByTag (timonService, queryParams: GetClubLinkByTagsParams) =
     async {
-        let! resp = timonService.linkService.``get-club-links-by-tag`` queryParams
-        return GetClubLinksResultProvider.Parse resp
-    }
+        return! timonService.linkService.``get-club-links-by-tag`` queryParams }
 
 let deleteTagFromLink (timonService, payload) =
     async {
@@ -60,10 +50,7 @@ let deleteTagFromLink (timonService, payload) =
     }
 
 let searchClubLinks (timonService, queryParams: GetClubLinkSearchParams) =
-    async {
-        let! resp = timonService.linkService.``search-club-links`` queryParams
-        return GetClubLinksResultProvider.Parse resp
-    }
+    async { return! timonService.linkService.``search-club-links`` queryParams }
 
 //#endregion
 
@@ -86,30 +73,38 @@ let signUp (timonService, signUpRequest) =
 //#region ChannelService
 
 let getChannels (timonService, clubId) =
+    async { return! timonService.channelService.``get-channels`` clubId }
+
+let getChanneActivityPublDetails (timonService, queryParams) =
     async {
-        let! resp = timonService.channelService.``get-channels`` clubId
-        return ChannelViewProvider.Parse resp
+        return!
+            timonService.channelService.``get-channel-activity-pub-details``
+                queryParams
     }
 
 let createChannel (timonService, payload) =
     async { return! timonService.channelService.``create-channel`` payload }
 
-
 let getChannelFollowings (timonService: TimonService, queryParams) =
     async {
-        let! resp = timonService.channelService.``get-followings`` (queryParams)
-        return GetChannelFollowResultProvider.Parse resp
-    }
+        return! timonService.channelService.``get-followings`` (queryParams) }
 
+let getChannelFollowers (timonService: TimonService, queryParams) =
+    async {
+        return! timonService.channelService.``get-followers`` (queryParams) }
+
+let follow (timonService, payload) =
+    async { return! timonService.channelService.follow payload }
+
+let createActivityPubId (timonService, payload) =
+    async {
+        return! timonService.channelService.``create-activity-pub-id`` payload }
 //#endregion
 
 //#region ClubService
 
 let getClubs timonService =
-    async {
-        let! resp = timonService.clubService.``get-clubs`` ()
-        return ClubViewProvider.Parse resp
-    }
+    async { return! timonService.clubService.``get-clubs`` () }
 
 let createClub (timonService, payload) =
     async { return! timonService.clubService.``create-club`` payload }
@@ -121,13 +116,7 @@ let unsubscribeClub (timonService, payload) =
     async { return! timonService.clubService.``unsubscribe-club`` payload }
 
 let getOtherClubs timonService =
-    async {
-        let! resp = timonService.clubService.``get-other-clubs`` ()
-        return ClubViewProvider.Parse resp
-    }
+    async { return! timonService.clubService.``get-other-clubs`` () }
 
 let getMembers (timonService, queryParams) =
-    async {
-        let! resp = timonService.clubService.``get-members`` (queryParams)
-        return GetClubMembersResultProvider.Parse resp
-    }
+    async { return! timonService.clubService.``get-members`` (queryParams) }

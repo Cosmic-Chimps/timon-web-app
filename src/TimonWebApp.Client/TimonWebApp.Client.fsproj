@@ -8,7 +8,7 @@
         <Compile Include="Common.fs" />
         <Compile Include="BoleroHelpers.fs" />
         <Compile Include="Validation.fs" />
-        <Compile Include="Services\ServicesJsonProviders.fs" />
+        <Compile Include="Services\Dtos.fs" />
         <Compile Include="Services\AuthServices.fs" />
         <Compile Include="Services\LinkServices.fs" />
         <Compile Include="Services\ClubServices.fs" />

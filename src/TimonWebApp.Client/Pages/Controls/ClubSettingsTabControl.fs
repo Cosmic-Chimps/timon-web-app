@@ -9,6 +9,7 @@ open TimonWebApp.Client.ClubServices
 open TimonWebApp.Client.AuthServices
 open TimonWebApp.Client.LinkServices
 open TimonWebApp.Client.ChannelServices
+open TimonWebApp.Client.Dtos
 
 type TabItem =
     { code: int
@@ -21,7 +22,7 @@ type Model =
       selectedTab: int
       clubView: ClubView option
       showWarningLeavingProtectedClub: bool
-      clubMembers: ClubMember array }
+      clubMembers: ClubMembersView array }
     static member Default =
         { tabItems =
               [| { code = 0
@@ -54,17 +55,18 @@ type Message =
     | DismissConfirmation
     | ForceLeave
     | LoadMembers
-    | MembersLoaded of ClubMember array
+    | MembersLoaded of ClubMembersView array
 
 let update (timonService: TimonService) model message =
     match message with
     | ChangeTab tabCode ->
         let tabItems' =
             model.tabItems
-            |> Seq.map (fun t ->
-                match tabCode = t.code with
-                | true -> { t with tabClass = "is-active" }
-                | false -> { t with tabClass = "" })
+            |> Seq.map
+                (fun t ->
+                    match tabCode = t.code with
+                    | true -> { t with tabClass = "is-active" }
+                    | false -> { t with tabClass = "" })
             |> Seq.toArray
 
         { model with
@@ -118,44 +120,61 @@ type Component() =
 
         let tabContent =
             match model.selectedTab with
-            | 0 -> ClubSettingsTabControlsTemplate.ClubSettingTabContentGeneral().Elt()
-            | 1 -> ClubSettingsTabControlsTemplate.ClubSettingTabContentApps().Elt()
+            | 0 ->
+                ClubSettingsTabControlsTemplate
+                    .ClubSettingTabContentGeneral()
+                    .Elt()
+            | 1 ->
+                ClubSettingsTabControlsTemplate
+                    .ClubSettingTabContentApps()
+                    .Elt()
             | 2 ->
-                let memberRow (clubMember: ClubMember) =
-                    ClubSettingsTabControlsTemplate.RowMember()
-                                    .DisplayName(clubMember.DisplayName).Elt()
+                let memberRow (clubMember: ClubMembersView) =
+                    ClubSettingsTabControlsTemplate
+                        .RowMember()
+                        .DisplayName(clubMember.DisplayName)
+                        .Elt()
 
-                ClubSettingsTabControlsTemplate.ClubSettingTabContentMembers()
-                                .Members(forEach model.clubMembers memberRow)
-                                .Elt()
+                ClubSettingsTabControlsTemplate
+                    .ClubSettingTabContentMembers()
+                    .Members(forEach model.clubMembers memberRow)
+                    .Elt()
             | _ ->
                 let confirmLeaveProtectedClub =
                     match model.showWarningLeavingProtectedClub with
                     | false -> empty
                     | true ->
-                        ClubSettingsTabControlsTemplate.ConfirmLeaveProtectedClub()
-                                        .ClubName(model.clubView.Value.Name)
-                                        .DismissConfirmation(fun _ ->
-                                        dispatch DismissConfirmation)
-                                        .ForceLeave(fun _ -> dispatch ForceLeave)
-                                        .Elt()
+                        ClubSettingsTabControlsTemplate
+                            .ConfirmLeaveProtectedClub()
+                            .ClubName(model.clubView.Value.Name)
+                            .DismissConfirmation(fun _ ->
+                                dispatch DismissConfirmation)
+                            .ForceLeave(fun _ -> dispatch ForceLeave)
+                            .Elt()
 
-                ClubSettingsTabControlsTemplate.ClubSettingTabContentDangerZone()
-                                .LeaveClub(fun _ ->
-                                dispatch (BeforeLeaveClub model.clubView.Value))
-                                .ConfirmLeaveProtectedClub(confirmLeaveProtectedClub)
-                                .Elt()
+                ClubSettingsTabControlsTemplate
+                    .ClubSettingTabContentDangerZone()
+                    .LeaveClub(fun _ ->
+                        dispatch (BeforeLeaveClub model.clubView.Value))
+                    .ConfirmLeaveProtectedClub(confirmLeaveProtectedClub)
+                    .Elt()
 
 
         let renderTabItems tabItem =
-            ClubSettingsTabControlsTemplate.ClubSettingsTabHeader().TabClass(tabItem.tabClass)
-                            .ChangeTab(fun _ ->
-                            dispatch (ChangeTab tabItem.code))
-                            .IClass(tabItem.iClass).Text(tabItem.text).Elt()
+            ClubSettingsTabControlsTemplate
+                .ClubSettingsTabHeader()
+                .TabClass(tabItem.tabClass)
+                .ChangeTab(fun _ -> dispatch (ChangeTab tabItem.code))
+                .IClass(tabItem.iClass)
+                .Text(tabItem.text)
+                .Elt()
 
-        ClubSettingsTabControlsTemplate.ClubSettingsTabControl()
-                        .TabHeaders(forEach model.tabItems renderTabItems)
-                        .TabContent(tabContent).Elt()
+        ClubSettingsTabControlsTemplate
+            .ClubSettingsTabControl()
+            .TabHeaders(forEach model.tabItems renderTabItems)
+            .TabContent(tabContent)
+            .Elt()
 
 
-let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch
+let view (model: Model) dispatch =
+    ecomp<Component, _, _> [] model dispatch

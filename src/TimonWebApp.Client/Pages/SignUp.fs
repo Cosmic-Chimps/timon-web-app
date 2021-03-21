@@ -14,7 +14,7 @@ open TimonWebApp.Client.ClubServices
 open TimonWebApp.Client.AuthServices
 open TimonWebApp.Client.LinkServices
 open TimonWebApp.Client.ChannelServices
-open TimonWebApp.Client.JsonProviders
+open TimonWebApp.Client.Dtos
 
 type Model =
     { failureReason: string option
@@ -49,54 +49,56 @@ type Message =
 let validateForm (form: SignUpRequest) =
     let validInput (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
         |> validator.MinLen
             2
-               (name
-                + " must have more than 2 characters")
+            (name
+             + " must have more than 2 characters")
         |> validator.MaxLen
             50
-               (name
-                + " must have less than 50 characters")
+            (name
+             + " must have less than 50 characters")
         |> validator.End
 
     let validEmail (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
-        |> validator.IsMail
-            (name
-             + " should be an email format")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
+        |> validator.IsMail(
+            name
+            + " should be an email format"
+        )
         |> validator.End
 
     let validPassword (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
         |> validator.MinLen
             6
-               (name
-                + " must have more than 6 characters")
+            (name
+             + " must have more than 6 characters")
         |> validator.MaxLen
             50
-               (name
-                + " must have less than 100 characters")
+            (name
+             + " must have less than 100 characters")
         |> validator.Match
             (Regex("[A-Z]"))
-               ("passwords must have at least one uppercase")
+            ("passwords must have at least one uppercase")
         |> validator.Match
             (Regex("[0-9]"))
-               ("passwords must have at least one digit")
+            ("passwords must have at least one digit")
         |> validator.Match
             (Regex("[^a-zA-Z\d\s:]"))
-               ("passwords must have at least one non alphanumeric character")
-        |> validator.Match
-            (Regex(form.confirmPassword))
-               ("passwords must match")
+            ("passwords must have at least one non alphanumeric character")
+        |> validator.Match(Regex(form.confirmPassword)) ("passwords must match")
         |> validator.End
 
     all
@@ -112,6 +114,7 @@ let validateForm (form: SignUpRequest) =
 let update (timonService: TimonService) message (model: Model) =
     let validateForced form =
         let validated = validateForm form
+
         { model with
               form = form
               validatedForm = Some validated
@@ -243,15 +246,15 @@ let view model dispatch =
                          attr.``class``
                          <| String.concat
                              " "
-                                [ Bulma.button
-                                  Bulma.``is-block``
-                                  Bulma.``is-primary``
-                                  Bulma.``is-large``
-                                  Bulma.``is-fullwidth``
-                                  if model.isLoading then
-                                      Bulma.``is-loading``
-                                  else
-                                      "" ]
+                             [ Bulma.button
+                               Bulma.``is-block``
+                               Bulma.``is-primary``
+                               Bulma.``is-large``
+                               Bulma.``is-fullwidth``
+                               if model.isLoading then
+                                   Bulma.``is-loading``
+                               else
+                                   "" ]
                          attr.disabled model.isLoading
                          on.click (fun _ -> dispatch ValidateForm) ] [
                     text "Sign up"
@@ -259,4 +262,7 @@ let view model dispatch =
             ]
         ]
 
-    SignUpPage().errorHole(errorHole).singUpForm(signUpForm).Elt()
+    SignUpPage()
+        .errorHole(errorHole)
+        .singUpForm(signUpForm)
+        .Elt()

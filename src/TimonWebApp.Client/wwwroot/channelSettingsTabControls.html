@@ -18,7 +18,10 @@
 </template>
 
 <template id="ChannelSettingTabContentGeneral">
-  <span>ChannelSettingTabContentGeneral</span>
+  <div class="columns">
+    <div class="column">ActivityPubId:</div>
+    <div class="column">${ActivityPubId}</div>
+  </div>
 </template>
 
 <template id="ChannelSettingTabContentApps">
@@ -26,18 +29,44 @@
 </template>
 
 
-<template id="ChannelSettingTabContentMembers">
+<template id="ChannelSettingTabContentFollowers">
   <div class="content">
     <table class="table">
       <thead>
         <tr>
-          <th>Members</th>
+          <th>Followers</th>
         </tr>
       </thead>
       <tbody>
         ${Members}
       </tbody>
     </table>
+  </div>
+</template>
+
+<template id="ChannelSettingTabContentFollowing">
+  <div class="content">
+    ${FollowForm}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Following</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Members}
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<template id="ChannelSettingTabContentNoActivityPubId">
+  <div class="content">
+    <div class="columns">
+      <div class="column">
+        ${CreateActivityPubIdAction}
+      </div>
+    </div>
   </div>
 </template>
 

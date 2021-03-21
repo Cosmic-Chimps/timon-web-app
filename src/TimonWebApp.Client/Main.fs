@@ -19,6 +19,7 @@ open TimonWebApp.Client.ClubServices
 open TimonWebApp.Client.AuthServices
 open TimonWebApp.Client.LinkServices
 open TimonWebApp.Client.ChannelServices
+open Dtos
 
 /// Routing endpoints definition.
 type Page =
@@ -76,8 +77,11 @@ let initLogin (jsRunTime: IJSRuntime) model =
     initPage (Login.init jsRunTime) model LoginMsg Login
 
 let initHome (jsRunTime: IJSRuntime) model =
-    initPage (Home.init jsRunTime model.state.Authentication) model HomeMsg (fun pageModel ->
-        Home(pageModel))
+    initPage
+        (Home.init jsRunTime model.state.Authentication)
+        model
+        HomeMsg
+        (fun pageModel -> Home(pageModel))
 
 let initSignUp (jsRunTime: IJSRuntime) model =
     initPage (SignUp.init jsRunTime) model SignUpMsg SignUp
@@ -91,16 +95,18 @@ let signOut (_: IJSRuntime) (timonService: TimonService) =
 
     Cmd.OfAsync.either doWork () id raise
 
-let update (jsRuntime: IJSRuntime)
-           (timonService: TimonService)
-           (localStorage: ILocalStorageService)
-           message
-           (model: Model)
-           =
+let update
+    (jsRuntime: IJSRuntime)
+    (timonService: TimonService)
+    (localStorage: ILocalStorageService)
+    message
+    (model: Model)
+    =
     printfn "MainUpdate %s" (message.ToString())
 
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel
+
         { model with
               page = pageFn ({ Model = subModel }) },
         Cmd.map msgFn cmd
@@ -123,6 +129,7 @@ let update (jsRuntime: IJSRuntime)
 
     | RecvSignedInAs option, _ ->
         let cmdSetPage = Cmd.none
+
         match option with
         | Some _ ->
             let state =
@@ -152,7 +159,7 @@ let update (jsRuntime: IJSRuntime)
                 HomeMsg
                 (Cmd.map
                     Home.AnonymousLinkViewListMsg
-                     (Cmd.ofMsg (AnonymousLinkViewList.Message.LoadLinks(0))))
+                    (Cmd.ofMsg (AnonymousLinkViewList.Message.LoadLinks(0))))
 
         | Some club ->
             let searchBoxModel =
@@ -174,9 +181,16 @@ let update (jsRuntime: IJSRuntime)
                   page = Home({ Model = homeModel }) },
             Cmd.map
                 HomeMsg
-                (Cmd.ofMsg
-                    (Home.Message.LoadClubLinks
-                        (true, club.Name, club.Id, String.Empty, Guid.Empty, 0)))
+                (Cmd.ofMsg (
+                    Home.Message.LoadClubLinks(
+                        true,
+                        club.Name,
+                        club.Id,
+                        String.Empty,
+                        Guid.Empty,
+                        0
+                    )
+                ))
 
     | SignOutRequested, _ -> model, signOut jsRuntime timonService
 
@@ -190,8 +204,12 @@ let update (jsRuntime: IJSRuntime)
         { model with state = state }, cmdSetPage
 
     | HomeMsg msg, Home (homePageModel) ->
-        genericUpdate (Home.update jsRuntime timonService localStorage)
-            (homePageModel.Model) msg HomeMsg (fun pm -> Home(pm))
+        genericUpdate
+            (Home.update jsRuntime timonService localStorage)
+            (homePageModel.Model)
+            msg
+            HomeMsg
+            (fun pm -> Home(pm))
 
     | LoginMsg (Login.Message.LoginSuccess authentication), Login loginModel ->
         let loginModel, _ =
@@ -320,27 +338,27 @@ type NavbarEndItemsDisplay() =
                 div [ attr.``class``
                       <| String.concat
                           " "
-                             [ Bulma.``navbar-item``
-                               Bulma.``has-dropdown``
-                               Bulma.``is-hoverable`` ] ] [
+                          [ Bulma.``navbar-item``
+                            Bulma.``has-dropdown``
+                            Bulma.``is-hoverable`` ] ] [
                     a [ attr.``class`` Bulma.``navbar-link`` ] [
                         text model.signedInAs.Value
                     ]
                     div [ attr.``class``
                           <| String.concat
                               " "
-                                 [ Bulma.``navbar-dropdown``
-                                   Bulma.``is-right`` ] ] [
+                              [ Bulma.``navbar-dropdown``
+                                Bulma.``is-right`` ] ] [
                         a [ attr.``class``
                             <| String.concat " " [ Bulma.``navbar-item`` ] ] [
                             span [ attr.``class``
                                    <| String.concat
                                        " "
-                                          [ Bulma.icon; Bulma.``is-small`` ] ] [
+                                       [ Bulma.icon; Bulma.``is-small`` ] ] [
                                 i [ attr.``class``
                                     <| String.concat
                                         " "
-                                           [ "mdi"; Mdi.``mdi-account`` ] ] []
+                                        [ "mdi"; Mdi.``mdi-account`` ] ] []
                             ]
                             RawHtml "&nbsp;Profile"
                         ]
@@ -354,11 +372,11 @@ type NavbarEndItemsDisplay() =
                             span [ attr.``class``
                                    <| String.concat
                                        " "
-                                          [ Bulma.icon; Bulma.``is-small`` ] ] [
+                                       [ Bulma.icon; Bulma.``is-small`` ] ] [
                                 i [ attr.``class``
                                     <| String.concat
                                         " "
-                                           [ "mdi"; Mdi.``mdi-logout`` ] ] []
+                                        [ "mdi"; Mdi.``mdi-logout`` ] ] []
                             ]
                             RawHtml "&nbsp;Logout"
                         ]
@@ -386,17 +404,21 @@ let view (js: IJSRuntime) (mainModel: Model) dispatch =
     let navbarEndItemsDisplay =
         ecomp<NavbarEndItemsDisplay, _, _> [] mainModel dispatch
 
-    NavbarTemplate().navbarEndItems(navbarEndItemsDisplay).content(content)
+    NavbarTemplate()
+        .navbarEndItems(navbarEndItemsDisplay)
+        .content(content)
         .Elt()
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
 
     [<Inject>]
-    member val localStorage = Unchecked.defaultof<ILocalStorageService> with get, set
+    member val localStorage =
+        Unchecked.defaultof<ILocalStorageService> with get, set
 
-    static member val Dispatchers: System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit> = System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit>
-                                                                                                                     () with get, set
+    static member val Dispatchers: System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit> =
+        System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit>
+            () with get, set
 
     interface IDisposable with
         member this.Dispose() =
@@ -410,13 +432,17 @@ type MyApp() =
 
         async {
             do! res
+
             if firstRender then
                 MyApp.Dispatchers.TryAdd(this.Dispatch, ())
                 |> ignore
+
                 this.Dispatch Rendered
+
             return ()
         }
-        |> Async.StartImmediateAsTask :> _
+        |> Async.StartImmediateAsTask
+        :> _
 
     override this.Program =
         let authService = this.Remote<AuthService>()

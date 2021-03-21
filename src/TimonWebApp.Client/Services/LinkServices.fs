@@ -6,7 +6,7 @@ open System.Text.Json.Serialization
 open Common
 open FSharp.Data
 open Bolero.Remoting
-open JsonProviders
+open Dtos
 
 // Request
 [<JsonFSharpConverter>]
@@ -55,20 +55,18 @@ type GetClubLinkSearchParams =
       page: int }
 
 // Respone
-type GetLinksResult = GetLinksResultProvider.Root
-type ClubListView = GetClubLinksResultProvider.Root
+// type GetLinksResult = GetLinksResultProvider.Root
+// type ClubListView = GetClubLinksResultProvider.Root
 
 type LinkService =
-    { ``get-links``: GetLinkParams -> Async<string> // GetLinksResult
-      ``get-club-links``: GetClubLinkParams -> Async<string> // ClubListView
+    { ``get-links``: GetLinkParams -> Async<AnonymousLinkView>
+      ``get-club-links``: GetClubLinkParams -> Async<AuthLinkView>
       ``create-link``: CreateLinkPayload -> Async<HttpStatusCode>
       ``add-tags``: AddTagPayload -> Async<HttpStatusCode>
-      ``get-links-by-tag``: GetLinkByTagsParams -> Async<string> // GetLinksResult
-      ``get-club-links-by-tag``: GetClubLinkByTagsParams -> Async<string> // ClubListView
+      ``get-links-by-tag``: GetLinkByTagsParams -> Async<AnonymousLinkView>
+      ``get-club-links-by-tag``: GetClubLinkByTagsParams -> Async<AuthLinkView>
       ``delete-tag-from-link``: DeleteTagFromLink -> Async<HttpStatusCode>
-      ``search-club-links``: GetClubLinkSearchParams -> Async<string> // ClubListView
-      }
+      ``search-club-links``: GetClubLinkSearchParams -> Async<AuthLinkView> }
 
     interface IRemoteService with
         member this.BasePath = "/links"
-

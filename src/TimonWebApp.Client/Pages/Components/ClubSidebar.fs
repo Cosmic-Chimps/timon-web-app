@@ -15,6 +15,7 @@ open TimonWebApp.Client.ClubServices
 open TimonWebApp.Client.AuthServices
 open TimonWebApp.Client.LinkServices
 open TimonWebApp.Client.ChannelServices
+open TimonWebApp.Client.Dtos
 
 
 type ClubForm = { name: string; isProtected: bool }
@@ -68,9 +69,10 @@ type Message =
 let validateClubForm (clubForm) =
     let validateName (validator: Validator<string>) name value =
         validator.Test name value
-        |> validator.NotBlank
-            (name
-             + " cannot be blank")
+        |> validator.NotBlank(
+            name
+            + " cannot be blank"
+        )
         |> validator.End
 
     all
@@ -79,13 +81,15 @@ let validateClubForm (clubForm) =
           isProtected = clubForm.isProtected }
 
 
-let update (jsRuntime: IJSRuntime)
-           (timonService: TimonService)
-           (message: Message)
-           (model: Model)
-           =
+let update
+    (jsRuntime: IJSRuntime)
+    (timonService: TimonService)
+    (message: Message)
+    (model: Model)
+    =
     let validateFormForced form =
         let mapResults = validateClubForm form
+
         { model with
               clubForm = form
               errorsValidateForm = Some mapResults }
@@ -140,7 +144,7 @@ let update (jsRuntime: IJSRuntime)
         Cmd.ofMsg (AddClub)
 
     | AddClub, _ ->
-        let payload: CreateClubPayload =
+        let payload : CreateClubPayload =
             { name = model.clubForm.name
               isProtected = model.clubForm.isProtected }
 
@@ -188,7 +192,7 @@ let update (jsRuntime: IJSRuntime)
         Cmd.none
 
     | SubscribeClub clubView, _ ->
-        let payload: SubscribeClubPayload =
+        let payload : SubscribeClubPayload =
             { id = clubView.Id
               name = clubView.Name }
 
@@ -214,7 +218,7 @@ let update (jsRuntime: IJSRuntime)
         { model with clubToSubscribe = None }, Cmd.batch cmds
 
     | UnSubscribeClub clubView, _ ->
-        let payload: UnSubscribeClubPayload =
+        let payload : UnSubscribeClubPayload =
             { id = clubView.Id
               name = clubView.Name }
 
@@ -307,7 +311,7 @@ type Component() =
     override _.View model dispatch =
 
         let formFieldItem =
-            inputAdd
+            inputWithButton
                 "club_new_input"
                 "Add new club"
                 Mdi.``mdi-tree``
@@ -328,15 +332,17 @@ type Component() =
                         model.clubForm.name
                         inputCallback
                         buttonAction
+                        "Add"
 
                 let form =
-                    ComponentsTemplate.ClubForm().ClubInput(inputBox)
-                                      .ClubFormIsProtected(model.clubForm.isProtected,
-                                                           (fun n ->
-                                                               dispatch
-                                                                   (SetFormIsProtected
-                                                                       n)))
-                                      .Elt()
+                    ComponentsTemplate
+                        .ClubForm()
+                        .ClubInput(inputBox)
+                        .ClubFormIsProtected(
+                            model.clubForm.isProtected,
+                            (fun n -> dispatch (SetFormIsProtected n))
+                        )
+                        .Elt()
 
                 (form, Mdi.``mdi-minus-circle-outline``)
 
@@ -363,16 +369,20 @@ type Component() =
                 | true -> "is-active"
                 | _ -> ""
 
-            ComponentsTemplate.ClubLink().Name(club.Name)
-                              .ChangeClub(fun c -> dispatch (ChangeClub(club)))
-                              .ActiveClass(mainDivClass)
-                              .OpenClubSettings(fun c ->
-                              dispatch (OpenClubSettings(club))).Elt()
+            ComponentsTemplate
+                .ClubLink()
+                .Name(club.Name)
+                .ChangeClub(fun c -> dispatch (ChangeClub(club)))
+                .ActiveClass(mainDivClass)
+                .OpenClubSettings(fun c -> dispatch (OpenClubSettings(club)))
+                .Elt()
 
         let subscribeOtherClub (club: ClubView) =
-            ComponentsTemplate.OtherClubLink().Name(club.Name)
-                              .SubscribeToClub(fun c ->
-                              dispatch (SubscribeClub(club))).Elt()
+            ComponentsTemplate
+                .OtherClubLink()
+                .Name(club.Name)
+                .SubscribeToClub(fun c -> dispatch (SubscribeClub(club)))
+                .Elt()
 
         let clubSettingsModal =
             match model.clubSettings with
@@ -384,21 +394,25 @@ type Component() =
                         (ClubSettingsTabControlMsg
                          >> dispatch)
 
-                ComponentsTemplate.ClubSettingsModal().ClubName(c.Name)
-                                  .DismissModal(fun _ ->
-                                  dispatch DismissSettingsModal)
-                                  .ClubSettingsTabControl(tabControl).Elt()
+                ComponentsTemplate
+                    .ClubSettingsModal()
+                    .ClubName(c.Name)
+                    .DismissModal(fun _ -> dispatch DismissSettingsModal)
+                    .ClubSettingsTabControl(tabControl)
+                    .Elt()
 
 
-        ComponentsTemplate.ClubSidebar().SidebarClass(model.sidebarClass)
-                          .ToggleVisibility(fun _ ->
-                          (dispatch ToggleSidebarVisibility)).Icon(icon)
-                          .ClubForm(clubForm)
-                          .PublicClubs(forEach publicClubs showClub)
-                          .PrivateClubs(forEach privateClubs showClub)
-                          .ClubSettingsModal(clubSettingsModal)
-                          .OtherClubs(forEach
-                                          model.otherClubs
-                                          subscribeOtherClub).Elt()
+        ComponentsTemplate
+            .ClubSidebar()
+            .SidebarClass(model.sidebarClass)
+            .ToggleVisibility(fun _ -> (dispatch ToggleSidebarVisibility))
+            .Icon(icon)
+            .ClubForm(clubForm)
+            .PublicClubs(forEach publicClubs showClub)
+            .PrivateClubs(forEach privateClubs showClub)
+            .ClubSettingsModal(clubSettingsModal)
+            .OtherClubs(forEach model.otherClubs subscribeOtherClub)
+            .Elt()
 
-let view (model: Model) dispatch = ecomp<Component, _, _> [] model dispatch
+let view (model: Model) dispatch =
+    ecomp<Component, _, _> [] model dispatch

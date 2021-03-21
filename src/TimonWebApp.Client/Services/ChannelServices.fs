@@ -6,7 +6,7 @@ open System.Text.Json.Serialization
 open Common
 open FSharp.Data
 open Bolero.Remoting
-open JsonProviders
+open Dtos
 
 
 // Requests
@@ -14,16 +14,26 @@ open JsonProviders
 type CreateChannelPayload = { clubId: ClubId; name: string }
 
 [<JsonFSharpConverter>]
-type GetChannelFollowings = { clubId: ClubId; channelId: ChannelId }
+type GetChannelDetails =
+    { clubId: ClubId
+      channelId: ChannelId }
+
+type FollowPayload =
+    { clubId: ClubId
+      channelId: ChannelId
+      activityPubId: String }
 
 // Response
-type ChannelView = ChannelViewProvider.Root
-type ChannelFollows = GetChannelFollowResultProvider.Root
+// type ChannelView = ChannelViewProvider.Root
+// type ChannelFollows = GetChannelFollowResultProvider.Root
 
 type ChannelService =
-    { ``get-channels``: ClubId -> Async<string> // ChannelView array
+    { ``get-channels``: ClubId -> Async<ChannelView array>
+      ``get-channel-activity-pub-details``: GetChannelDetails -> Async<ChannelActivityPubDetailsView>
       ``create-channel``: CreateChannelPayload -> Async<HttpStatusCode>
-      ``get-followings``: GetChannelFollowings -> Async<string> // ChannelFollows array
-      }
+      ``get-followings``: GetChannelDetails -> Async<ChannelFollowsView array>
+      ``get-followers``: GetChannelDetails -> Async<ChannelFollowsView array>
+      ``create-activity-pub-id``: GetChannelDetails -> Async<HttpStatusCode>
+      follow: FollowPayload -> Async<HttpStatusCode> }
     interface IRemoteService with
         member this.BasePath = "/channels"

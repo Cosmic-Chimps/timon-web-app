@@ -22,30 +22,43 @@ type Startup() =
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     member this.ConfigureServices(services: IServiceCollection) =
         services
-          .AddMvc()
-          .AddRazorRuntimeCompilation() |> ignore
+            .AddMvc()
+            .AddRazorRuntimeCompilation()
+        |> ignore
 
-        services.AddServerSideBlazor() |> ignore
+        services.AddServerSideBlazor()
+        |> ignore
 
-        services.AddDataProtection() |> ignore
+        services.AddDataProtection()
+        |> ignore
 
-        services.AddBlazoredLocalStorage() |> ignore
+        services.AddBlazoredLocalStorage()
+        |> ignore
+
+        services.AddHealthChecks()
+        |> ignore
 
         services
-          .AddAuthorization()
-          .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie() |> ignore
+            .AddAuthorization()
+            .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie()
+        |> ignore
 
-        services.AddRemoting<AuthService>()
-          .AddRemoting<LinkService>()
-          .AddRemoting<ChannelService>()
-          .AddRemoting<ClubService>()
-          .AddBoleroHost() |> ignore
+        services
+            .AddRemoting<AuthService>()
+            .AddRemoting<LinkService>()
+            .AddRemoting<ChannelService>()
+            .AddRemoting<ClubService>()
+            .AddBoleroHost()
+        |> ignore
 
 
 #if DEBUG
-        services.AddHotReload
-            (templateDir = __SOURCE_DIRECTORY__
-             + "/../TimonWebApp.Client")
+        services.AddHotReload(
+            templateDir =
+                __SOURCE_DIRECTORY__
+                + "/../TimonWebApp.Client"
+        )
         |> ignore
 #endif
 
@@ -57,17 +70,23 @@ type Startup() =
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
         app
-          .UseAuthentication()
-          .UseRemoting()
-          .UseStaticFiles()
-          .UseRouting()
-          .UseBlazorFrameworkFiles()
-          .UseEndpoints(fun endpoints ->
+            .UseAuthentication()
+            .UseRemoting()
+            .UseStaticFiles()
+            .UseRouting()
+            .UseBlazorFrameworkFiles()
+            .UseEndpoints(fun endpoints ->
 #if DEBUG
-           endpoints.UseHotReload()
+                endpoints.UseHotReload()
 #endif
-           endpoints.MapBlazorHub() |> ignore
-           endpoints.MapFallbackToPage("/_Host") |> ignore)
+                endpoints.MapBlazorHub()
+                |> ignore
+
+                endpoints.MapHealthChecks("/health")
+                |> ignore
+
+                endpoints.MapFallbackToPage("/_Host")
+                |> ignore)
         |> ignore
 
 module Program =
@@ -78,12 +97,24 @@ module Program =
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
 
         let environment' =
-            if String.IsNullOrEmpty(environment) then "Production" else environment
+            if String.IsNullOrEmpty(environment) then
+                "Production"
+            else
+                environment
 
         let configuration =
-            ConfigurationBuilder().AddJsonFile("appsettings.json", false, true)
-                .AddJsonFile(sprintf "appsettings.%s.json" environment', true).AddEnvironmentVariables().Build()
+            ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", false, true)
+                .AddJsonFile(sprintf "appsettings.%s.json" environment', true)
+                .AddEnvironmentVariables()
+                .Build()
 
-        WebHost.CreateDefaultBuilder(args).UseStaticWebAssets().UseConfiguration(configuration).UseStartup<Startup>()
-            .Build().Run()
+        WebHost
+            .CreateDefaultBuilder(args)
+            .UseStaticWebAssets()
+            .UseConfiguration(configuration)
+            .UseStartup<Startup>()
+            .Build()
+            .Run()
+
         0

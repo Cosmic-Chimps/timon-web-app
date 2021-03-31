@@ -1,6 +1,15 @@
-[*.fs]
-indent_size=4
-max_line_length=80
+# top-most EditorConfig file
+root = true
+
+[*]
+end_of_line = lf
+
+[*.{fs,fsi,fsx}]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
 fsharp_semicolon_at_end_of_line=false
 fsharp_space_before_parameter=true
 fsharp_space_before_lowercase_invocation=true

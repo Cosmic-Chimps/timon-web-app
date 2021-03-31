@@ -28,22 +28,18 @@ type RefreshTokenRequest = { refreshToken: string }
 let jsonConfig =
     JsonConfig.create (jsonFieldNaming = Json.lowerCamelCase)
 
-let getCommons
-    (config: IConfiguration)
-    (dataProvider: IDataProtectionProvider)
-    =
+let getCommons (config: IConfiguration) (dataProvider: IDataProtectionProvider) =
     let protector =
         dataProvider.CreateProtector(Constants.providerKey)
 
-    let endpoint = config.["TimonEndPoint"]
+    let endpoint =
+        match config.["TIMON_ENDPOINT"] with
+        | null -> config.["TimonEndPoint"]
+        | _ -> config.["TIMON_ENDPOINT"]
+
     (endpoint, protector)
 
-let singInUser
-    (ctx: IRemoteContext)
-    (protector: IDataProtector)
-    email
-    (res: TokenProvider.Root)
-    =
+let singInUser (ctx: IRemoteContext) (protector: IDataProtector) email (res: TokenProvider.Root) =
     async {
         let refreshTokenProtected = protector.Protect(res.RefreshToken)
 
@@ -55,12 +51,7 @@ let singInUser
               Claim("TimonRefreshToken", refreshTokenProtected)
               Claim("TimonExpiredDate", expiresAt.ToString()) ]
 
-        do!
-            ctx.HttpContext.AsyncSignIn(
-                email,
-                claims = claims,
-                persistFor = TimeSpan.FromDays(365.)
-            )
+        do! ctx.HttpContext.AsyncSignIn(email, claims = claims, persistFor = TimeSpan.FromDays(365.))
 
         return res.AccessToken
     }

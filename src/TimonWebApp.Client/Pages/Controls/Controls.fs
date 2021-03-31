@@ -10,20 +10,11 @@ let errorAndClass name onFocus (result: Result<_, Map<_, _>> option) =
     | _, Some focus when focus = name -> None, ""
     | Some (Error e), _ when
         (e.ContainsKey name
-         && e.[name] <> []) ->
-        Some(System.String.Join(",", e.[name])), Bulma.``is-danger``
+         && e.[name] <> []) -> Some(System.String.Join(",", e.[name])), Bulma.``is-danger``
     | Some _, _ -> None, "modified valid"
     | _ -> None, ""
 
-let formFieldItem
-    validatedForm
-    onFocus
-    (isDisabled: bool)
-    fieldType
-    name
-    value
-    callback
-    =
+let formFieldItem validatedForm onFocus (isDisabled: bool) fieldType name value callback =
     let error, validClass =
         errorAndClass name onFocus validatedForm
 
@@ -52,15 +43,7 @@ let formFieldItem
         ]
     ]
 
-let inputAddLink
-    item
-    onFocus
-    inputName
-    inputValue
-    inputCallback
-    buttonAction
-    buttonName
-    =
+let inputAddLink item onFocus inputName inputValue inputCallback buttonAction buttonName =
     let error, validClass = errorAndClass inputName onFocus item
 
     concat [
@@ -70,9 +53,7 @@ let inputAddLink
             div [ attr.``class``
                   <| String.concat " " [ Bulma.field; Bulma.``has-addons`` ] ] [
                 div [ attr.``class``
-                      <| String.concat
-                          " "
-                          [ Bulma.control; Bulma.``is-expanded`` ] ] [
+                      <| String.concat " " [ Bulma.control; Bulma.``is-expanded`` ] ] [
                     p [ attr.``class``
                         <| String.concat
                             " "
@@ -99,16 +80,12 @@ let inputAddLink
                                      Bulma.``is-small``
                                      Bulma.``is-left`` ] ] [
                             i [ attr.``class``
-                                <| String.concat
-                                    " "
-                                    [ Mdi.mdi; Mdi.``mdi-link`` ] ] []
+                                <| String.concat " " [ Mdi.mdi; Mdi.``mdi-link`` ] ] []
                         ]
                         match error with
                         | Some value ->
                             span [ attr.``class``
-                                   <| String.concat
-                                       " "
-                                       [ Bulma.``has-text-danger`` ] ] [
+                                   <| String.concat " " [ Bulma.``has-text-danger`` ] ] [
                                 text value
                             ]
                         | None -> ()
@@ -129,6 +106,7 @@ let inputAddLink
             ]
         ]
     ]
+
 
 let inputWithButton
     inputId
@@ -183,9 +161,7 @@ let inputWithButton
                     match error with
                     | Some value ->
                         span [ attr.``class``
-                               <| String.concat
-                                   " "
-                                   [ Bulma.``has-text-danger`` ] ] [
+                               <| String.concat " " [ Bulma.``has-text-danger`` ] ] [
                             text value
                         ]
                     | None -> ()

@@ -98,7 +98,7 @@ let update
     message
     (model: Model)
     =
-    // printfn "MainUpdate %s" (message.ToString())
+    printfn "MainUpdate %s" (message.ToString())
 
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel

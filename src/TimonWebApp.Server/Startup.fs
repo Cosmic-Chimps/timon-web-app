@@ -45,6 +45,11 @@ type Startup() =
         |> ignore
 
         services
+            .AddControllers()
+            .AddDapr()
+        |> ignore
+
+        services
             .AddRemoting<AuthService>()
             .AddRemoting<LinkService>()
             .AddRemoting<ChannelService>()

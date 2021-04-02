@@ -89,15 +89,9 @@ let validateForm (form: SignUpRequest) =
             50
             (name
              + " must have less than 100 characters")
-        |> validator.Match
-            (Regex("[A-Z]"))
-            ("passwords must have at least one uppercase")
-        |> validator.Match
-            (Regex("[0-9]"))
-            ("passwords must have at least one digit")
-        |> validator.Match
-            (Regex("[^a-zA-Z\d\s:]"))
-            ("passwords must have at least one non alphanumeric character")
+        |> validator.Match(Regex("[A-Z]")) ("passwords must have at least one uppercase")
+        |> validator.Match(Regex("[0-9]")) ("passwords must have at least one digit")
+        |> validator.Match(Regex("[^a-zA-Z\d\s:]")) ("passwords must have at least one non alphanumeric character")
         |> validator.Match(Regex(form.confirmPassword)) ("passwords must match")
         |> validator.End
 
@@ -108,8 +102,7 @@ let validateForm (form: SignUpRequest) =
           lastName = validInput t "Lastname" form.lastName
           email = validEmail t "Email" form.email
           password = validPassword t "Password" form.password
-          confirmPassword =
-              validPassword t "Confirm password" form.confirmPassword }
+          confirmPassword = validPassword t "Confirm password" form.confirmPassword }
 
 let update (timonService: TimonService) message (model: Model) =
     let validateForced form =
@@ -162,11 +155,7 @@ let update (timonService: TimonService) message (model: Model) =
 
     | FormValidated, _ ->
         let cmd =
-            Cmd.OfAsync.either
-                signUp
-                (timonService, model.form)
-                SignUpSuccess
-                SignUpError
+            Cmd.OfAsync.either signUp (timonService, model.form) SignUpSuccess SignUpError
 
         { model with isLoading = true }, cmd
 
@@ -187,7 +176,8 @@ let update (timonService: TimonService) message (model: Model) =
 
     | SignUpError exn, _ ->
         { model with
-              failureReason = Some exn.Message },
+              failureReason = Some exn.Message
+              isLoading = false },
         Cmd.none
 
     | _, _ -> model, Cmd.none
@@ -216,32 +206,12 @@ let view model dispatch =
         div [] [
             concat [
                 comp<KeySubscriber> [] []
-                formFieldItem
-                    "text"
-                    "Firstname"
-                    model.form.firstName
-                    (pd "Firstname")
-                formFieldItem
-                    "text"
-                    "Lastname"
-                    model.form.lastName
-                    (pd "Lastname")
-                formFieldItem
-                    "text"
-                    "Username"
-                    model.form.userName
-                    (pd "Username")
+                formFieldItem "text" "Firstname" model.form.firstName (pd "Firstname")
+                formFieldItem "text" "Lastname" model.form.lastName (pd "Lastname")
+                formFieldItem "text" "Username" model.form.userName (pd "Username")
                 formFieldItem "email" "Email" model.form.email (pd "Email")
-                formFieldItem
-                    "password"
-                    "Password"
-                    model.form.password
-                    (pd "Password")
-                formFieldItem
-                    "password"
-                    "Confirm password"
-                    model.form.confirmPassword
-                    (pd "Confirm password")
+                formFieldItem "password" "Password" model.form.password (pd "Password")
+                formFieldItem "password" "Confirm password" model.form.confirmPassword (pd "Confirm password")
                 button [ attr.id "confirmButton"
                          attr.``class``
                          <| String.concat

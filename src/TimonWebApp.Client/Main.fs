@@ -77,11 +77,7 @@ let initLogin (jsRunTime: IJSRuntime) model =
     initPage (Login.init jsRunTime) model LoginMsg Login
 
 let initHome (jsRunTime: IJSRuntime) model =
-    initPage
-        (Home.init jsRunTime model.state.Authentication)
-        model
-        HomeMsg
-        (fun pageModel -> Home(pageModel))
+    initPage (Home.init jsRunTime model.state.Authentication) model HomeMsg (fun pageModel -> Home(pageModel))
 
 let initSignUp (jsRunTime: IJSRuntime) model =
     initPage (SignUp.init jsRunTime) model SignUpMsg SignUp
@@ -102,7 +98,7 @@ let update
     message
     (model: Model)
     =
-    printfn "MainUpdate %s" (message.ToString())
+    // printfn "MainUpdate %s" (message.ToString())
 
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel
@@ -119,11 +115,7 @@ let update
 
     | Rendered, _ ->
         let cmdGetUserName =
-            Cmd.OfAuthorized.either
-                timonService.authService.``get-user-name``
-                ()
-                RecvSignedInAs
-                Error
+            Cmd.OfAuthorized.either timonService.authService.``get-user-name`` () RecvSignedInAs Error
 
         model, cmdGetUserName
 
@@ -157,9 +149,7 @@ let update
                   page = Home({ Model = Home.Model.Default }) },
             Cmd.map
                 HomeMsg
-                (Cmd.map
-                    Home.AnonymousLinkViewListMsg
-                    (Cmd.ofMsg (AnonymousLinkViewList.Message.LoadLinks(0))))
+                (Cmd.map Home.AnonymousLinkViewListMsg (Cmd.ofMsg (AnonymousLinkViewList.Message.LoadLinks(0))))
 
         | Some club ->
             let searchBoxModel =
@@ -181,16 +171,7 @@ let update
                   page = Home({ Model = homeModel }) },
             Cmd.map
                 HomeMsg
-                (Cmd.ofMsg (
-                    Home.Message.LoadClubLinks(
-                        true,
-                        club.Name,
-                        club.Id,
-                        String.Empty,
-                        Guid.Empty,
-                        0
-                    )
-                ))
+                (Cmd.ofMsg (Home.Message.LoadClubLinks(true, club.Name, club.Id, String.Empty, Guid.Empty, 0)))
 
     | SignOutRequested, _ -> model, signOut jsRuntime timonService
 
@@ -213,10 +194,7 @@ let update
 
     | LoginMsg (Login.Message.LoginSuccess authentication), Login loginModel ->
         let loginModel, _ =
-            Login.update
-                timonService
-                (Login.Message.LoginSuccess authentication)
-                loginModel.Model
+            Login.update timonService (Login.Message.LoginSuccess authentication) loginModel.Model
 
         let model' =
             { model with
@@ -245,13 +223,9 @@ let update
               page = Login({ Model = m }) },
         Cmd.map LoginMsg cmd
 
-    | SignUpMsg (SignUp.Message.SignUpSuccess authentication),
-      SignUp signUpModel ->
+    | SignUpMsg (SignUp.Message.SignUpSuccess authentication), SignUp signUpModel ->
         let signUpModel, _ =
-            SignUp.update
-                timonService
-                (Pages.SignUp.Message.SignUpSuccess authentication)
-                signUpModel.Model
+            SignUp.update timonService (Pages.SignUp.Message.SignUpSuccess authentication) signUpModel.Model
 
         let model' =
             { model with
@@ -352,13 +326,9 @@ type NavbarEndItemsDisplay() =
                         a [ attr.``class``
                             <| String.concat " " [ Bulma.``navbar-item`` ] ] [
                             span [ attr.``class``
-                                   <| String.concat
-                                       " "
-                                       [ Bulma.icon; Bulma.``is-small`` ] ] [
+                                   <| String.concat " " [ Bulma.icon; Bulma.``is-small`` ] ] [
                                 i [ attr.``class``
-                                    <| String.concat
-                                        " "
-                                        [ "mdi"; Mdi.``mdi-account`` ] ] []
+                                    <| String.concat " " [ "mdi"; Mdi.``mdi-account`` ] ] []
                             ]
                             RawHtml "&nbsp;Profile"
                         ]
@@ -370,13 +340,9 @@ type NavbarEndItemsDisplay() =
                             <| String.concat " " [ Bulma.``navbar-item`` ]
                             on.click (fun _ -> dispatch SignOutRequested) ] [
                             span [ attr.``class``
-                                   <| String.concat
-                                       " "
-                                       [ Bulma.icon; Bulma.``is-small`` ] ] [
+                                   <| String.concat " " [ Bulma.icon; Bulma.``is-small`` ] ] [
                                 i [ attr.``class``
-                                    <| String.concat
-                                        " "
-                                        [ "mdi"; Mdi.``mdi-logout`` ] ] []
+                                    <| String.concat " " [ "mdi"; Mdi.``mdi-logout`` ] ] []
                             ]
                             RawHtml "&nbsp;Logout"
                         ]
@@ -394,11 +360,7 @@ let view (js: IJSRuntime) (mainModel: Model) dispatch =
                 model.Model
                 (SignUpMsg
                  >> dispatch)
-        | Home (model) ->
-            Home.view
-                mainModel.state.Authentication
-                model.Model
-                (HomeMsg >> dispatch)
+        | Home (model) -> Home.view mainModel.state.Authentication model.Model (HomeMsg >> dispatch)
         | Start -> empty
 
     let navbarEndItemsDisplay =
@@ -413,12 +375,10 @@ type MyApp() =
     inherit ProgramComponent<Model, Message>()
 
     [<Inject>]
-    member val localStorage =
-        Unchecked.defaultof<ILocalStorageService> with get, set
+    member val localStorage = Unchecked.defaultof<ILocalStorageService> with get, set
 
     static member val Dispatchers: System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit> =
-        System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit>
-            () with get, set
+        System.Collections.Concurrent.ConcurrentDictionary<(Message -> unit), unit>() with get, set
 
     interface IDisposable with
         member this.Dispose() =

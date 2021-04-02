@@ -260,6 +260,8 @@ let update
 
     | SetPage (Page.Start), _ -> model, Cmd.none //initHome jsRuntime model
 
+    | SetPage (Page.Home _), _ -> initHome jsRuntime model
+
     //    | SetPage page -> { model with page = page }
 
     // | SetPage (Page.Home (clubName, m)), _ ->

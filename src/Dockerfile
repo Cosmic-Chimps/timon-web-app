@@ -13,6 +13,8 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+RUN cp .MyCertificate.crt /usr/local/share/ca-certificates
+RUN update-ca-certificates
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS="http://*:8080"

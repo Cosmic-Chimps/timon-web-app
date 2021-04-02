@@ -98,7 +98,7 @@ let update
     message
     (model: Model)
     =
-    printfn "MainUpdate %s" (message.ToString())
+    // printfn "MainUpdate %s" (message.ToString())
 
     let genericUpdate update subModel msg msgFn pageFn =
         let subModel, cmd = update msg subModel
@@ -138,7 +138,7 @@ let update
 
             m, cmd
 
-        | None _ -> model, cmdSetPage
+        | None _ -> initHome jsRuntime model //, cmdSetPage
 
     | OnClubsLoaded clubs, _ ->
         let clubHead = clubs |> Seq.tryHead
@@ -258,7 +258,7 @@ let update
 
     | SetPage (Page.SignUp _), _ -> initSignUp jsRuntime model
 
-    | SetPage (Page.Start), _ -> initHome jsRuntime model
+    | SetPage (Page.Start), _ -> model, Cmd.none //initHome jsRuntime model
 
     //    | SetPage page -> { model with page = page }
 

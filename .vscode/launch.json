@@ -13,7 +13,10 @@
       "args": [],
       "cwd": "${workspaceFolder}/src/TimonWebApp.Server",
       "stopAtEntry": false,
-      "console": "internalConsole"
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      },
     }
   ]
 }

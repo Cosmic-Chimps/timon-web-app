@@ -29,8 +29,8 @@
     <PackageReference Include="Dapr.AspNetCore" Version="1.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <None Update=".MyCertificate.crt">
+    <None Include=".MyCertificate.crt">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+    </None>
   </ItemGroup>
 </Project>
